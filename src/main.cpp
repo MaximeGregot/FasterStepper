@@ -183,10 +183,10 @@ void setup()
 
     t1.begin(timerInterrupt);
     t1.trigger(20);
-    delay(200);
+    delay(300);
 }
 
 void loop()
 {
-    delay(200);
+    delay(300);
 }
