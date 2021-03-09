@@ -1,3 +1,5 @@
+#pragma region  // INCLUDE et DEFINE
+
 #include <Arduino.h>
 #include <WS2812Serial.h>
 #include "TeensyTimerTool.h"
@@ -8,7 +10,11 @@ using namespace TeensyTimerTool;
 #define DELAY_HIGH 3.0
 
 #define PIN_SPIN_1  1
+#define PIN_SPIN_2  2
+#define PIN_SPIN_3  3
+#define PIN_SPIN_4  4
 
+#pragma endregion
 
 OneShotTimer    t1(GPT1);
 
@@ -26,16 +32,18 @@ struct controller
 
 struct stepper
 {
-    volatile char           state;              // etat du moteur (a : acceleration ; c : constant ; b : brake)
     volatile long           motPos;             // position reelle du moteur
-    volatile long           aim;                // position finale visee par le moteur
-    volatile float          speed;              // vitesse (periode) la plus rapide que le moteur va atteindre
-    volatile bool           pinState;           // etat du moteur (HIGH ou LOW)
-    volatile char           dir;                // sens de deplacement (+1 vers la droite, -1 vers la gauche)
+
     volatile unsigned long  brakeZone;          // distance de freinage du moteur (en nombre de pas)
     volatile unsigned int   n;                  // nombre de pas depuis le debut de l'acceleration (pour le calcul du temps de pause durant l'acceleration/freinage)
     volatile unsigned long  t;                  // temps restant avant le prochain pas
     volatile unsigned long  stepTime;           // temps total du pas actuel
+    volatile char           state;              // etat du moteur (a : acceleration ; c : constant ; b : brake)
+    volatile long           aim;                // position finale visee par le moteur
+
+    volatile float          speed;              // vitesse (periode) la plus rapide que le moteur va atteindre
+    volatile bool           pinState;           // etat du moteur (HIGH ou LOW)
+    volatile char           dir;                // sens de deplacement (+1 vers la droite, -1 vers la gauche)
     bool                    jobDone;            // vrai si le moteur n'a pas a avancer ; faux si le moteur est en train d'avancer/demarrer
 
     volatile void           (*stepHigh)();      // fait avancer le moteur d'un pas (etat de la roche STEP a "HIGH")
@@ -46,13 +54,14 @@ struct stepper
 
 volatile stepper stepperList[7];
 volatile byte stepperFlag;
-volatile unsigned long timer;
+volatile double timer;
 volatile unsigned int i;    
 volatile bool canMove;   // vrai si les moteurs sont autorises a bouger
 volatile bool emergency;    // vrai si un moteur touche l'interrupteur de fin de course
 volatile byte emergencyFlag;    // numerote les moteurs qui touchent les interrupteurs de fin de course
 
 volatile controller controllerList[4];  // liste des commandes
+
 
 void initStepper(stepper mot)
 {
@@ -69,7 +78,9 @@ void initStepper(stepper mot)
     mot.jobDone = true;
 }
 
-void stepAndSetStepTime(volatile unsigned int i) // fait un pas ; fait varier 't' en fonction de la phase d'acceleration/freinage ; rajoute la prochaine valeur de t
+void stepAndSetStepTime(volatile unsigned int i)    // fait un pas
+                                                    // fait varier 't' en fonction de la phase d'acceleration/freinage
+                                                    // rajoute la prochaine valeur de t
 {
     if (canMove)
     {
@@ -91,14 +102,8 @@ void stepAndSetStepTime(volatile unsigned int i) // fait un pas ; fait varier 't
             if (stepperList[i].state == 'c') // le moteur va a la vitesse max, sauf s'il depasse la zone de freinage : 'b' [fait]
             {
                 if (abs(stepperList[i].motPos - stepperList[i].aim) < stepperList[i].brakeZone)
-                {
-                    stepperList[i].state = 'b';
-                }
-
-                else
-                {
-                    stepperList[i].t = stepperList[i].speed - DELAY_HIGH;
-                }
+                    {stepperList[i].state = 'b';}
+                else{stepperList[i].t = stepperList[i].speed - DELAY_HIGH;}
             }
 
             if (stepperList[i].state == 'b') // s'arrete si le moteur est arrive sur sa cible ; sinon : calcule le nouveau t
@@ -172,13 +177,50 @@ void spinInterrupt1()
     if(controllerList[1].position < controllerList[1].lowerBoundary)    {controllerList[1].position = controllerList[1].lowerBoundary;}
     if(controllerList[1].position > controllerList[1].upperBoundary)    {controllerList[1].position = controllerList[1].upperBoundary;}
 }
+void spinInterrupt2()
+{
+    if(digitalReadFast(PIN_SPIN_2) == HIGH)                             {controllerList[2].position += SPIN_STEP;}
+    else                                                                {controllerList[2].position -= SPIN_STEP;}
+    if(controllerList[2].position < controllerList[2].lowerBoundary)    {controllerList[2].position = controllerList[2].lowerBoundary;}
+    if(controllerList[2].position > controllerList[2].upperBoundary)    {controllerList[2].position = controllerList[2].upperBoundary;}
+}
+void spinInterrupt3()
+{
+    if(digitalReadFast(PIN_SPIN_3) == HIGH)                             {controllerList[3].position += SPIN_STEP;}
+    else                                                                {controllerList[3].position -= SPIN_STEP;}
+    if(controllerList[3].position < controllerList[3].lowerBoundary)    {controllerList[3].position = controllerList[3].lowerBoundary;}
+    if(controllerList[3].position > controllerList[3].upperBoundary)    {controllerList[3].position = controllerList[3].upperBoundary;}
 
+
+}
+void spinInterrupt4()
+{
+    if(digitalReadFast(PIN_SPIN_4) == HIGH)                             {controllerList[4].position += SPIN_STEP;}
+    else                                                                {controllerList[4].position -= SPIN_STEP;}
+    if(controllerList[4].position < controllerList[4].lowerBoundary)    {controllerList[4].position = controllerList[4].lowerBoundary;}
+    if(controllerList[4].position > controllerList[4].upperBoundary)    {controllerList[4].position = controllerList[4].upperBoundary;}
+}
+
+
+// FONCTIONS DE SECURITE
+
+void clearEmgFlags(stepper_number)
+{
+    emergencyFlag |= ~(1 << stepper_number);
+}
 
 
 void setup()
 {
+    // COMMANDES
     pinMode(PIN_SPIN_1, INPUT);
     attachInterrupt(PIN_SPIN_1, spinInterrupt1, CHANGE);
+    pinMode(PIN_SPIN_2, INPUT);
+    attachInterrupt(PIN_SPIN_2, spinInterrupt2, CHANGE);
+    pinMode(PIN_SPIN_3, INPUT);
+    attachInterrupt(PIN_SPIN_3, spinInterrupt3, CHANGE);
+    pinMode(PIN_SPIN_4, INPUT);
+    attachInterrupt(PIN_SPIN_4, spinInterrupt4, CHANGE);
 
 
     t1.begin(timerInterrupt);
