@@ -204,7 +204,7 @@ void spinInterrupt4()
 
 // FONCTIONS DE SECURITE
 
-void clearEmgFlags(stepper_number)
+void clearEmgFlags(int stepper_number)
 {
     emergencyFlag |= ~(1 << stepper_number);
 }
