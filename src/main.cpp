@@ -9,6 +9,7 @@ using namespace TeensyTimerTool;
 #define DELAY_HIGH  3.0
 #define STALL_SPD   1000    // 1 ms
 
+
 #define PIN_SPIN_0  0
 #define PIN_SPIN_1  1
 #define PIN_SPIN_2  2
@@ -48,14 +49,15 @@ struct stepper
 
     volatile void           (*stepHigh)();      // fait avancer le moteur d'un pas (etat de la roche STEP a "HIGH")
     volatile void           (*stepLow)();       // ramene la broche STEP du moteur a l'etat "LOW"
-    volatile void           (*setDir)(char);    // definit la direction du moteur
+    volatile void           (*dirHigh)();       // definit la direction du moteur (droite)
+    volatile void           (*dirLow)();        // (gauche)
 };
 
 
 volatile stepper stepperList[7];
 volatile byte stepperFlag;
 volatile double timer;
-volatile unsigned int i;    
+unsigned int i;    
 volatile bool canMove;   // vrai si les moteurs sont autorises a bouger
 volatile bool emergency = false;    // vrai si un moteur touche l'interrupteur de fin de course
 volatile byte emergencyFlag = 0;    // numerote les moteurs qui touchent les interrupteurs de fin de course
@@ -95,9 +97,15 @@ void stepAndSetStepTime(volatile unsigned int i)    // fait un pas
         {
             stepperList[i].stepLow;
 
-            if (abs(stepperList[i].motPos - stepperList[i].aim) < min(stepperList[i].brakeZone, stepperList[i].n + 1)) // freinage en cas de depassement, d'approche de la cible ou d'interruption de la montee
-            {
+            if (abs(stepperList[i].motPos - stepperList[i].aim) < stepperList[i].n + 1)  // freinage en cas de depassement, d'approche de la cible ou d'interruption de la montee
+            {                                                                            // A CHANGER en "min(stepperList[i].brakeZone, stepperList[i].n + 1)" si le calcul de brakeZone a un interet
                 stepperList[i].state = 'b';
+            }
+
+            if (stepperList[i].state == 'a' && stepperList[i].stepTime <= 1.005 * stepperList[i].speed)
+            {
+                stepperList[i].stepTime = stepperList[i].speed;
+                stepperList[i].state = 'c';
             }
 
             if (stepperList[i].state == 'a') // le moteur accelere ; calcul de t avec n
@@ -115,7 +123,7 @@ void stepAndSetStepTime(volatile unsigned int i)    // fait un pas
 
             if (stepperList[i].state == 'c') // le moteur va a la vitesse max, sauf s'il depasse la zone de freinage : 'b' [fait]
             {
-                stepperList[i].t = stepperList[i].speed - DELAY_HIGH;
+                stepperList[i].stepTime = stepperList[i].speed;
             }
 
             if (stepperList[i].state == 'b') // s'arrete si le moteur est arrive sur sa cible ; sinon : calcule le nouveau t
@@ -141,6 +149,8 @@ void stepAndSetStepTime(volatile unsigned int i)    // fait un pas
                     }
                 }
             }
+
+            stepperList[i].t = stepperList[i].stepTime - DELAY_HIGH;
         }
     }
 }
@@ -167,7 +177,7 @@ void setTimer() // regle le prochain intervalle de pause ; reactualise les flags
 
     for (i = 0; i < 7; i++)
     {
-        stepperList[i].t -= timer;
+        if(!stepperList[i].jobDone) {stepperList[i].t -= timer;}
     }
 
     t1.trigger(timer);
@@ -177,11 +187,55 @@ void setTimer() // regle le prochain intervalle de pause ; reactualise les flags
 
 //
 
+double getSpeed(int numStepper)
+{
+    return((double)100000);
+}
+
+
+// INITIATION - ACTUALISATION DU MOUVEMENT
+
+void moveTo(int numStepper, long newAim, double newSpeed)
+{
+    stepperList[numStepper].n = 0;
+    if(stepperList[numStepper].jobDone)
+    {
+        stepperList[numStepper].stepTime = max(newSpeed, STALL_SPD);    // la vitesse initiale vaut STALL_SPD, sauf si le moteur va plus lentement (vittesse constante)
+    }
+    if((stepperList[numStepper].aim - stepperList[numStepper].motPos) * (newAim - stepperList[numStepper].motPos) > (double) 0)  // Si la nouvelle cible est à l'oppose de l'ancienne, elle reste la meme
+    {
+        if(abs(stepperList[numStepper].aim - stepperList[numStepper].motPos) < abs(newAim - stepperList[numStepper].motPos))    // Si la nouvelle cible est plus loin que l'ancienne, elle remplace l'ancienne
+        {
+            stepperList[numStepper].aim = newAim;
+            stepperList[numStepper].state = 'a';
+        }
+    }
+
+    stepperList[numStepper].speed = newSpeed;
+
+    if(stepperList[numStepper].aim - stepperList[numStepper].motPos >= (double) 0)  // regle le nouveau sens du moteur (reste le meme si en train de decelerer)
+    {
+        stepperList[numStepper].dir = 1;
+        stepperList[numStepper].dirHigh;
+    }
+    else
+    {
+        stepperList[numStepper].dir = -1;
+        stepperList[numStepper].dirLow;
+    }
+    
+    if(stepperList[numStepper].aim != stepperList[numStepper].motPos)
+    {
+        stepperList[numStepper].jobDone = false;
+    }
+}
+
+
+
 void timerInterrupt()
 {
     if(stepperFlag == 0)
     {
-        // Cas ou aucun moteur ne doit avancer : que faire ?
         t1.trigger(20);
     }
     else
@@ -194,6 +248,14 @@ void timerInterrupt()
             }
         }
         setTimer();
+    }
+
+    for(i=0; i<4; i++)
+    {
+        if(stepperList[i].jobDone)
+        {
+            moveTo(i, controllerList[i].position, getSpeed(i)); // si le moteur s'est arrete pour faire demi-tour, il verifie s'il doit repartir
+        }
     }
 }
 
@@ -229,26 +291,13 @@ void spinInterrupt3()
 }
 
 
-// INITIATION - ACTUALISATION DU MOUVEMENT
-
-void moveTo(int numStepper, long newAim, double newSpeed)
-{
-    stepperList[numStepper].n = 0;
-    stepperList[numStepper].aim = newAim;
-    stepperList[numStepper].speed = newSpeed;
-    if(stepperList[numStepper].aim != stepperList[numStepper].motPos)
-    {
-        stepperList[numStepper].jobDone = false;
-    }
-}
-
 
 
 // FONCTIONS DE SECURITE
 
-void clearEmgFlags(int stepper_number)
+void clearEmgFlags(int numStepper)
 {
-    emergencyFlag |= ~(1 << stepper_number);
+    emergencyFlag |= ~(1 << numStepper);
 }
 
 
