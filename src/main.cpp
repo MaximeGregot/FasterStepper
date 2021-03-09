@@ -36,8 +36,8 @@ struct stepper
 
     volatile unsigned long  brakeZone;          // distance de freinage du moteur (en nombre de pas)
     volatile unsigned int   n;                  // nombre de pas depuis le debut de l'acceleration (pour le calcul du temps de pause durant l'acceleration/freinage)
-    volatile unsigned long  t;                  // temps restant avant le prochain pas
-    volatile unsigned long  stepTime;           // temps total du pas actuel
+    volatile double         t;                  // temps restant avant le prochain pas
+    volatile double         stepTime;           // temps total du pas actuel
     volatile char           state;              // etat du moteur (a : acceleration ; c : constant ; b : brake)
     volatile long           aim;                // position finale visee par le moteur
 
@@ -73,8 +73,8 @@ void initStepper(stepper mot)
     mot.dir = 1;
     mot.brakeZone = 0;
     mot.n = 1;
-    mot.t = 0;
-    mot.stepTime = 0;
+    mot.t = (double) 0;
+    mot.stepTime = (double) 0;
     mot.jobDone = true;
 }
 
@@ -120,7 +120,7 @@ void stepAndSetStepTime(volatile unsigned int i)    // fait un pas
 
 void setTimer() // regle le prochain intervalle de pause ; reactualise les flags
 {
-    timer = 1000000;
+    timer = 5000000; // 5000 ms
     stepperFlag = 0;
     for (i = 0; i < NUM_STEPPER; i++)
     {
@@ -155,7 +155,7 @@ void timerInterrupt()
     if(stepperFlag == 0)
     {
         // Cas ou aucun moteur ne doit avancer : que faire ?
-        t1.trigger(2);
+        t1.trigger(20);
     }
     else
     {
@@ -170,7 +170,7 @@ void timerInterrupt()
     }
 }
 
-void spinInterrupt1()
+void spinInterrupt1()   // INTERRUPT COMMANDES
 {
     if(digitalReadFast(PIN_SPIN_1) == HIGH)                             {controllerList[1].position += SPIN_STEP;}
     else                                                                {controllerList[1].position -= SPIN_STEP;}
