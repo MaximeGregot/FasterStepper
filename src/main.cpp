@@ -65,7 +65,7 @@ volatile controller controllerList[4];  // liste des commandes
 
 void initStepper(stepper mot)
 {
-    mot.state = 's';
+    mot.state = 'a';
     mot.motPos = 0;
     mot.aim = 0;
     mot.speed = 0;
@@ -95,7 +95,7 @@ void stepAndSetStepTime(volatile unsigned int i)    // fait un pas
         {
             stepperList[i].stepLow;
 
-            if (abs(stepperList[i].motPos - stepperList[i].aim) < stepperList[i].brakeZone) // freinage en cas de depassement ou d'approche de la cible
+            if (abs(stepperList[i].motPos - stepperList[i].aim) < min(stepperList[i].brakeZone, stepperList[i].n + 1)) // freinage en cas de depassement, d'approche de la cible ou d'interruption de la montee
             {
                 stepperList[i].state = 'b';
             }
@@ -123,7 +123,7 @@ void stepAndSetStepTime(volatile unsigned int i)    // fait un pas
                 if (stepperList[i].motPos == stepperList[i].aim)
                 {
                     stepperList[i].jobDone = true;
-                    stepperList[i].state = 's';
+                    stepperList[i].state = 'a';
                 }
                 else
                 {
