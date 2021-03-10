@@ -9,11 +9,20 @@ using namespace TeensyTimerTool;
 #define DELAY_HIGH  3.0
 #define STALL_SPD   1000    // 1 ms
 
+// PINS DES COMMANDES
 
 #define PIN_SPIN_0  0
 #define PIN_SPIN_1  1
 #define PIN_SPIN_2  2
 #define PIN_SPIN_3  3
+
+#define S0_DIR      12
+#define S0_STEP     11
+#define S1_DIR      14
+#define S1_STEP     13
+
+
+
 
 #pragma endregion
 
@@ -47,14 +56,14 @@ struct stepper
     volatile char           dir;                // sens de deplacement (+1 vers la droite, -1 vers la gauche)
     bool                    jobDone;            // vrai si le moteur n'a pas a avancer ; faux si le moteur est en train d'avancer/demarrer
 
-    volatile void           (*stepHigh)();      // fait avancer le moteur d'un pas (etat de la roche STEP a "HIGH")
-    volatile void           (*stepLow)();       // ramene la broche STEP du moteur a l'etat "LOW"
-    volatile void           (*dirHigh)();       // definit la direction du moteur (droite)
-    volatile void           (*dirLow)();        // (gauche)
+    void                    (*stepHigh)();      // fait avancer le moteur d'un pas (etat de la roche STEP a "HIGH")
+    void                    (*stepLow)();       // ramene la broche STEP du moteur a l'etat "LOW"
+    void                    (*dirHigh)();       // definit la direction du moteur (droite)
+    void                    (*dirLow)();        // (gauche)
 };
 
 
-volatile stepper stepperList[7];
+stepper stepperList[7];
 volatile byte stepperFlag;
 volatile double timer;
 unsigned int i;    
@@ -63,6 +72,25 @@ volatile bool emergency = false;    // vrai si un moteur touche l'interrupteur d
 volatile byte emergencyFlag = 0;    // numerote les moteurs qui touchent les interrupteurs de fin de course
 
 volatile controller controllerList[4];  // liste des commandes
+
+#pragma region
+
+void dirHigh0()     {digitalWriteFast(S0_DIR, HIGH);}
+void dirLow0()      {digitalWriteFast(S0_DIR, LOW);}
+void stepHigh0()    {digitalWriteFast(S0_STEP, HIGH);}
+void stepLow0()     {digitalWriteFast(S0_STEP, LOW);}
+
+void dirHigh1()     {digitalWriteFast(S1_DIR, HIGH);}
+void dirLow1()      {digitalWriteFast(S1_DIR, LOW);}
+void stepHigh1()    {digitalWriteFast(S1_STEP, HIGH);}
+void stepLow1()     {digitalWriteFast(S1_STEP, LOW);}
+
+
+
+
+
+
+#pragma endregion
 
 
 void initStepper(stepper mot)
@@ -312,15 +340,38 @@ void setup()
     attachInterrupt(PIN_SPIN_2, spinInterrupt2, CHANGE);
     pinMode(PIN_SPIN_3, INPUT);
     attachInterrupt(PIN_SPIN_3, spinInterrupt3, CHANGE);
-    
 
+
+    #pragma region
+
+    // INITIALISATION STEPPERS
+    for (i = 0; i < 7; i++)
+    {
+        initStepper(stepperList[i]);
+    }
 
     t1.begin(timerInterrupt);
     t1.trigger(20);
     delay(300);
+
+    // ASSIGNATION METHODES STEPPERS
+    stepperList[0].dirHigh = dirHigh0;
+    stepperList[0].dirLow = dirLow0;
+    stepperList[0].stepHigh = stepHigh0;
+    stepperList[0].stepLow = stepLow0;
+
+    #pragma endregion
+
+
+
 }
 
 void loop()
 {
-    delay(300);
+    moveTo(0, 3200, 100000);
+    digitalWriteFast(LED_BUILTIN, HIGH);
+    delay(5000);
+    moveTo(0, 0, 100000);
+    digitalWriteFast(LED_BUILTIN, LOW);
+    delay(5000);
 }
