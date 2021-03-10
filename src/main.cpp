@@ -278,6 +278,7 @@ void timerInterrupt()
         setTimer();
     }
 
+    /*
     for(i=0; i<4; i++)
     {
         if(stepperList[i].jobDone)
@@ -285,6 +286,7 @@ void timerInterrupt()
             moveTo(i, controllerList[i].position, getSpeed(i)); // si le moteur s'est arrete pour faire demi-tour, il verifie s'il doit repartir
         }
     }
+    */
 }
 
 void spinInterrupt0()   // INTERRUPT COMMANDES
@@ -340,6 +342,9 @@ void setup()
     attachInterrupt(PIN_SPIN_2, spinInterrupt2, CHANGE);
     pinMode(PIN_SPIN_3, INPUT);
     attachInterrupt(PIN_SPIN_3, spinInterrupt3, CHANGE);
+    pinMode(LED_BUILTIN, OUTPUT);
+    pinMode(S0_STEP, OUTPUT);
+    pinMode(S0_DIR, OUTPUT);
 
 
     #pragma region
@@ -350,9 +355,7 @@ void setup()
         initStepper(stepperList[i]);
     }
 
-    t1.begin(timerInterrupt);
-    t1.trigger(20);
-    delay(300);
+    
 
     // ASSIGNATION METHODES STEPPERS
     stepperList[0].dirHigh = dirHigh0;
@@ -363,13 +366,17 @@ void setup()
     #pragma endregion
 
 
+    t1.begin(timerInterrupt);
+    t1.trigger(20);
+    delay(300);
+
 
 }
 
 void loop()
 {
-    moveTo(0, 3200, 100000);
     digitalWriteFast(LED_BUILTIN, HIGH);
+    moveTo(0, 3200, 100000);
     delay(5000);
     moveTo(0, 0, 100000);
     digitalWriteFast(LED_BUILTIN, LOW);
