@@ -1,4 +1,4 @@
-#pragma region  // INCLUDE et DEFINE
+// INCLUDE et DEFINE
 
 #include <Arduino.h>
 #include <WS2812Serial.h>
@@ -24,8 +24,6 @@ using namespace TeensyTimerTool;
 
 
 
-#pragma endregion
-
 OneShotTimer    t1(GPT1);
 
 
@@ -44,8 +42,8 @@ struct stepper
 {
     volatile long           motPos;             // position reelle du moteur
 
-    volatile unsigned long  brakeZone;          // distance de freinage du moteur (en nombre de pas)
-    volatile unsigned int   n;                  // nombre de pas depuis le debut de l'acceleration (pour le calcul du temps de pause durant l'acceleration/freinage)
+    volatile long           brakeZone;          // distance de freinage du moteur (en nombre de pas)
+    volatile int            n;                  // nombre de pas depuis le debut de l'acceleration (pour le calcul du temps de pause durant l'acceleration/freinage)
     volatile double         t;                  // temps restant avant le prochain pas
     volatile double         stepTime;           // temps total du pas actuel
     volatile char           state;              // etat du moteur (a : acceleration ; c : constant ; b : brake)
@@ -66,14 +64,14 @@ struct stepper
 stepper stepperList[7];
 volatile byte stepperFlag;
 volatile double timer;
-unsigned int i;    
-volatile bool canMove;   // vrai si les moteurs sont autorises a bouger
+int i;    
+volatile bool canMove = true;   // vrai si les moteurs sont autorises a bouger
 volatile bool emergency = false;    // vrai si un moteur touche l'interrupteur de fin de course
 volatile byte emergencyFlag = 0;    // numerote les moteurs qui touchent les interrupteurs de fin de course
 
 volatile controller controllerList[4];  // liste des commandes
 
-#pragma region
+
 
 void dirHigh0()     {digitalWriteFast(S0_DIR, HIGH);}
 void dirLow0()      {digitalWriteFast(S0_DIR, LOW);}
@@ -90,7 +88,6 @@ void stepLow1()     {digitalWriteFast(S1_STEP, LOW);}
 
 
 
-#pragma endregion
 
 
 void initStepper(stepper mot)
@@ -108,12 +105,14 @@ void initStepper(stepper mot)
     mot.jobDone = true;
 }
 
-void stepAndSetStepTime(volatile unsigned int i)    // fait un pas
+void stepAndSetStepTime(volatile int i)    // fait un pas
                                                     // fait varier 't' en fonction de la phase d'acceleration/freinage
                                                     // rajoute la prochaine valeur de t
 {
+    Serial.println("I try to move");
     if (canMove)
     {
+        
         if (!stepperList[i].pinState) // la broche "STEP" du moteur est LOW
         {
             stepperList[i].stepHigh;
@@ -217,6 +216,7 @@ void setTimer() // regle le prochain intervalle de pause ; reactualise les flags
 
 double getSpeed(int numStepper)
 {
+    Serial.println("getSpeed");
     return((double)100000);
 }
 
@@ -225,6 +225,7 @@ double getSpeed(int numStepper)
 
 void moveTo(int numStepper, long newAim, double newSpeed)
 {
+    Serial.println("moveTo");
     stepperList[numStepper].n = 0;
     if(stepperList[numStepper].jobDone)
     {
@@ -244,12 +245,12 @@ void moveTo(int numStepper, long newAim, double newSpeed)
     if(stepperList[numStepper].aim - stepperList[numStepper].motPos >= (double) 0)  // regle le nouveau sens du moteur (reste le meme si en train de decelerer)
     {
         stepperList[numStepper].dir = 1;
-        stepperList[numStepper].dirHigh;
+        stepperList[numStepper].dirHigh();
     }
     else
     {
         stepperList[numStepper].dir = -1;
-        stepperList[numStepper].dirLow;
+        stepperList[numStepper].dirLow();
     }
     
     if(stepperList[numStepper].aim != stepperList[numStepper].motPos)
@@ -262,6 +263,7 @@ void moveTo(int numStepper, long newAim, double newSpeed)
 
 void timerInterrupt()
 {
+    Serial.println("AAA");
     if(stepperFlag == 0)
     {
         t1.trigger(20);
@@ -291,6 +293,7 @@ void timerInterrupt()
 
 void spinInterrupt0()   // INTERRUPT COMMANDES
 {
+    Serial.println("INT COMM 0");
     if(digitalReadFast(PIN_SPIN_0) == HIGH)                             {controllerList[0].position += SPIN_STEP;}
     else                                                                {controllerList[0].position -= SPIN_STEP;}
     if(controllerList[0].position < controllerList[0].lowerBoundary)    {controllerList[0].position = controllerList[0].lowerBoundary;}
@@ -333,6 +336,11 @@ void clearEmgFlags(int numStepper)
 
 void setup()
 {
+
+
+    Serial.begin(9600);
+
+
     // COMMANDES
     pinMode(PIN_SPIN_0, INPUT);
     attachInterrupt(PIN_SPIN_0, spinInterrupt0, CHANGE);
@@ -346,8 +354,6 @@ void setup()
     pinMode(S0_STEP, OUTPUT);
     pinMode(S0_DIR, OUTPUT);
 
-
-    #pragma region
 
     // INITIALISATION STEPPERS
     for (i = 0; i < 7; i++)
@@ -363,12 +369,15 @@ void setup()
     stepperList[0].stepHigh = stepHigh0;
     stepperList[0].stepLow = stepLow0;
 
-    #pragma endregion
 
 
     t1.begin(timerInterrupt);
-    t1.trigger(20);
     delay(300);
+    stepperList[0].n = 0;
+    stepperList[0].jobDone = false;
+    stepperList[0].speed = 100000;
+    stepperList[0].aim = 6400;
+    t1.trigger(2000);
 
 
 }
@@ -376,9 +385,19 @@ void setup()
 void loop()
 {
     digitalWriteFast(LED_BUILTIN, HIGH);
-    moveTo(0, 3200, 100000);
+    stepperList[0].n = 0;
+    stepperList[0].jobDone = false;
+    stepperList[0].speed = 100000;
+    stepperList[0].aim = 6400;
+    stepperFlag |= (1<<0);
+    Serial.println("Lights ON");
     delay(5000);
-    moveTo(0, 0, 100000);
+    stepperList[0].n = 0;
+    stepperList[0].jobDone = false;
+    stepperList[0].speed = 100000;
+    stepperList[0].aim = 0;
+    stepperFlag |= (1<<0);
     digitalWriteFast(LED_BUILTIN, LOW);
+    Serial.println("Lights OFF");
     delay(5000);
 }
