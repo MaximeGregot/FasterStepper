@@ -328,7 +328,7 @@ void spinInterrupt3()
 
 void clearEmgFlags(int numStepper)
 {
-    emergencyFlag |= ~(1 << numStepper);
+    emergencyFlag &= ~(1 << numStepper);
 }
 
 
