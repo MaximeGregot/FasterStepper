@@ -22,7 +22,6 @@ using namespace TeensyTimerTool;
 #define S1_STEP     13
 
 
-
 OneShotTimer    t1(GPT1);
 
 
