@@ -385,14 +385,14 @@ void loop()
     digitalWriteFast(LED_BUILTIN, HIGH);
     stepperList[0].n = 0;
     stepperList[0].jobDone = false;
-    stepperList[0].speed = 100000;
+    stepperList[0].speed = 100;
     stepperList[0].aim = 6400;
     stepperFlag |= (1<<0);
     Serial.println("Lights ON");
     delay(5000);
     stepperList[0].n = 0;
     stepperList[0].jobDone = false;
-    stepperList[0].speed = 100000;
+    stepperList[0].speed = 100;
     stepperList[0].aim = 0;
     stepperFlag |= (1<<0);
     digitalWriteFast(LED_BUILTIN, LOW);
