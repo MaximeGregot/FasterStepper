@@ -23,7 +23,6 @@ using namespace TeensyTimerTool;
 
 
 
-
 OneShotTimer    t1(GPT1);
 
 
