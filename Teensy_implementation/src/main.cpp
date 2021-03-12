@@ -3,11 +3,13 @@
 #include "TeensyTimerTool.h"
 using namespace TeensyTimerTool;
 
+
+#define DELTA_HIGH 3.0
 #define S0_STEP 11
 #define S0_DIR  12
 
 
-float ref[] = {2000, 828.427, 635.674, 535.898, 472.136, 426.844, 392.523, 365.352, 343.146, 324.555, 308.694, 294.954, 282.899, 272.212, 262.652, 254.033, 246.211, 239.07, 232.517, 226.474, 220.879, 215.68, 210.832, 206.296, 202.041, 198.039, 194.266, 190.7, 187.324, 184.122,
+double ref[] = {2000, 828.427, 635.674, 535.898, 472.136, 426.844, 392.523, 365.352, 343.146, 324.555, 308.694, 294.954, 282.899, 272.212, 262.652, 254.033, 246.211, 239.07, 232.517, 226.474, 220.879, 215.68, 210.832, 206.296, 202.041, 198.039, 194.266, 190.7, 187.324, 184.122,
 181.078, 178.18, 175.417, 172.778, 170.256, 167.84, 165.525, 163.303, 161.168, 159.115, 157.138, 155.233, 153.396, 151.622, 149.909, 148.252, 146.649, 145.097, 143.594, 142.136, 140.721, 139.348, 138.015, 136.719, 135.459, 134.233, 133.039, 131.877, 130.745, 129.642,
 128.566, 127.516, 126.492, 125.492, 124.515, 123.561, 122.629, 121.717, 120.825, 119.953, 119.099, 118.263, 117.445, 116.643, 115.858, 115.088, 114.333, 113.593, 112.867, 112.155, 111.456, 110.77, 110.097, 109.436, 108.786, 108.148, 107.521, 106.905, 106.299, 105.704,
 105.118, 104.542, 103.975, 103.418, 102.869, 102.329, 101.798, 101.274, 100.759, 100.251, 99.751, 99.259, 98.773, 98.295, 97.823, 97.359, 96.901, 96.449, 96.003, 95.564, 95.131, 94.703, 94.281, 93.865, 93.454, 93.049, 92.648, 92.253, 91.863, 91.478,
@@ -47,50 +49,52 @@ float ref[] = {2000, 828.427, 635.674, 535.898, 472.136, 426.844, 392.523, 365.3
 30.008, 29.995};
 
 
-
-int dir;
-long ctrl;
-long aim;
-long pos;
-long n;
-double speed;
-bool jobdone;
-
-
-PeriodicTimer tPer(GPT2);
-OneShotTimer  tOne(GPT1);
-
-void periodic()
+struct stepper
 {
-  if(dir * (ctrl - pos) < 0)
-  {
-    if(aim - pos > n)
-    {
-      aim = pos + n;
-    }
-  }
-  else
-  {
-    if(ctrl > n)
-    {
-      aim = ctrl;
-    }
-  }
+long n;         // position dans la liste ref[]
+int dir;        // direction du mouvement (+/-1)
+long pos;       // position du moteur
+long aim;       // cible du moteur
+double stepT;   // prochain temps de pause
+double speed;   // temps de pause minimum pour le mouvement actuel
+double delta;   // temps de pause restant avant le prochain pas
+bool move;      // vrai si le moteur bouge
+bool brake;     // vrai si le moteur freine
+};
+
+struct controller
+{
+long pos;     // position de la commande
+
+};
+
+stepper s[7];
+controller cmd[7];
+
+
+long cmdPos;
+byte flag;
+double timer;
+
+
+
+PeriodicTimer pTimer(GPT2);
+OneShotTimer  osTimer(GPT1);
+
+
+void setTimer()
+{
+  timer = 200;
+  flag = 0;
 }
 
-void oneShot()
-{
-
-
-}
 
 void setup()
 {
-  tPer.begin(periodic, 1000, true);
-  tOne.begin(oneShot);
 
 }
 
-void loop() {
-  // put your main code here, to run repeatedly:
+void loop()
+{
+
 }
