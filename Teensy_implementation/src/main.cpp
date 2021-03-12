@@ -5,8 +5,20 @@ using namespace TeensyTimerTool;
 
 
 #define DELTA_HIGH 3.0
-#define S0_STEP 11
-#define S0_DIR  12
+#define STEP_0  11
+#define STEP_1  0
+#define STEP_2  0
+#define STEP_3  0
+#define STEP_4  0
+#define STEP_5  0
+#define STEP_6  0
+#define DIR_0   12
+#define DIR_1   0
+#define DIR_2   0
+#define DIR_3   0
+#define DIR_4   0
+#define DIR_5   0
+#define DIR_6   0
 
 
 double ref[] = {2000, 828.427, 635.674, 535.898, 472.136, 426.844, 392.523, 365.352, 343.146, 324.555, 308.694, 294.954, 282.899, 272.212, 262.652, 254.033, 246.211, 239.07, 232.517, 226.474, 220.879, 215.68, 210.832, 206.296, 202.041, 198.039, 194.266, 190.7, 187.324, 184.122,
@@ -65,7 +77,7 @@ bool brake;     // vrai si le moteur freine
 struct controller
 {
 long pos;     // position de la commande
-
+bool input;   // bouton du joueur
 };
 
 stepper s[7];
@@ -73,25 +85,192 @@ controller cmd[7];
 
 
 long cmdPos;
-byte flag;
+byte flag = 0;
+byte emergency = 0;
 double timer;
 
 
 
-PeriodicTimer pTimer(GPT2);
-OneShotTimer  osTimer(GPT1);
+PeriodicTimer ptimer(GPT2);
+OneShotTimer  ostimer(GPT1);
 
 
-void setTimer()
+double setTimer()
 {
   timer = 200;
   flag = 0;
+
+  for (int i = 0; i < 7; i++)
+  {
+    if (s[i].move && (s[i].delta < timer))
+    {
+      if (s[i].delta == timer)
+      {
+        flag |= (1 << i);
+      }
+      else
+      {
+        flag = (1 << i);
+        timer = s[i].delta;
+      }
+    }
+  }
+  timer = max(timer, 0.001);
+  for(int i = 0; i < 7; i++)
+  {
+    if(s[i].move)
+    {
+      s[i].delta -= timer;
+    }
+  }
+
+  return(timer);
 }
+
+void dwfDir(int i, int state)
+{
+  if(i == 0){digitalWriteFast(DIR_0, state);}
+  if(i == 1){digitalWriteFast(DIR_1, state);}
+  if(i == 2){digitalWriteFast(DIR_2, state);}
+  if(i == 3){digitalWriteFast(DIR_3, state);}
+  if(i == 4){digitalWriteFast(DIR_4, state);}
+  if(i == 5){digitalWriteFast(DIR_5, state);}
+  if(i == 6){digitalWriteFast(DIR_6, state);}
+}
+void dwfStep(int i, int state)
+{
+  if(i == 0){digitalWriteFast(STEP_0, state);}
+  if(i == 1){digitalWriteFast(STEP_1, state);}
+  if(i == 2){digitalWriteFast(STEP_2, state);}
+  if(i == 3){digitalWriteFast(STEP_3, state);}
+  if(i == 4){digitalWriteFast(STEP_4, state);}
+  if(i == 5){digitalWriteFast(STEP_5, state);}
+  if(i == 6){digitalWriteFast(STEP_6, state);}
+}
+int drfStep(int i)
+{
+  if(i == 0){return (digitalReadFast(STEP_0));}
+  if(i == 1){return (digitalReadFast(STEP_1));}
+  if(i == 2){return (digitalReadFast(STEP_2));}
+  if(i == 3){return (digitalReadFast(STEP_3));}
+  if(i == 4){return (digitalReadFast(STEP_4));}
+  if(i == 5){return (digitalReadFast(STEP_5));}
+  else{return (digitalReadFast(STEP_6));}
+}
+
+void setDir(int i)
+{
+  if(s[i].aim - s[i].pos < 0)
+  {
+    s[i].dir = -1;
+    dwfDir(i, LOW);
+  }
+  else
+  {
+    s[i].dir = 1;
+    dwfDir(i, HIGH);
+  }
+}
+
+
+void pTimer()
+{
+  for(int i = 0; i < 7; i++)
+  {
+    if(s[i].move)
+    {
+      if( ( (cmd[i].pos - s[i].pos) * (s[i].aim - s[i].pos) < 0) || (abs(cmd[i].pos - s[i].pos) < s[i].n) )
+      {
+        s[i].aim = s[i].pos + s[i].dir * (s[i].n - 1);
+      }
+      else
+      {
+        s[i].aim = cmd[i].pos;
+      }
+    }
+    else
+    {
+      if(s[i].aim != s[i].pos)
+      {
+        s[i].aim = cmd[i].pos;
+        s[i].move = true;
+        setDir(i);
+      }
+    }
+  }
+  for(int i = 0; i < 7; i++)
+  {
+    if(emergency & (1<<i))
+    {
+      s[i].move = false;
+    }
+  }
+}
+
+
+void step(int i)
+{
+  if(drfStep(i) == LOW)
+  {
+    s[i].delta = DELTA_HIGH;
+    dwfStep(i, HIGH);
+    s[i].pos += s[i].dir;
+  }
+  else if (s[i].pos != s[i].aim)
+  {
+    if(s[i].brake)
+    {
+      s[i].n--;
+      s[i].stepT = ref[s[i].n-1];
+    }
+    else
+    {
+      if(s[i].n > abs(s[i].aim - s[i].pos)){s[i].brake = true;}
+      else
+      {
+        if(ref[s[i].n] < s[i].speed)
+        {
+          s[i].stepT = ref[s[i].n];
+          s[i].n++;
+        }
+        else
+        {
+          s[i].stepT = s[i].speed;
+        }
+      }
+    }
+    s[i].delta = s[i].stepT - DELTA_HIGH;
+    dwfStep(i, LOW);
+    s[i].pos += s[i].dir;
+  }
+  else
+  {
+    s[i].move = false;
+    s[i].brake = false;
+  }
+  
+  
+}
+
+
+void osTimer()
+{
+  for(int i = 0; i < 7; i++)
+  {
+    if(flag & (1<<i))
+    {
+      step(i);
+    }
+  }
+  ostimer.trigger(setTimer());
+}
+
 
 
 void setup()
 {
-
+  ptimer.begin(pTimer, 20, true);
+  ostimer.begin(osTimer);
 }
 
 void loop()
