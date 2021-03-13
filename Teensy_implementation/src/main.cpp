@@ -285,7 +285,10 @@ void osTimer()
   ostimer.trigger(setTimer());
 }
 
-
+void suivi()
+{
+  Serial.println(String(cmd[0].pos) + "\t aim : " + String(s[0].aim) + "\t pos : " + String(s[0].pos) + "\t n : " + String(s[0].n));
+}
 
 void setup()
 {
@@ -304,14 +307,14 @@ void setup()
   delay(200);
   ostimer.begin(osTimer);
   ostimer.trigger(300.0);
-  
+  serial.begin(suivi, 100000);
 }
 
 void loop()
 {
 cmd[0].pos = 6400;
 delay(500);
-Serial.println(String(cmd[0].pos) + "\t aim : " + String(s[0].aim) + "\t pos : " + String(s[0].pos) + "\t n : " + String(s[0].n));
+
 cmd[0].pos = 0;
 delay(500);
 }
