@@ -131,7 +131,7 @@ double setTimer()
       }
     }
   }
-  timer = max(timer, 0.001);
+  timer = max(timer, 0.1);
   for(int i = 0; i < 7; i++)
   {
     if(s[i].move)
