@@ -11,7 +11,7 @@ void fonction()
   {
     digitalWriteFast(11, LOW);
     i = 0;
-    t.trigger(100.0);
+    t.trigger(300.0);
   }
   else
   {
@@ -24,7 +24,8 @@ void fonction()
 void setup() {
   pinMode(11, OUTPUT);
   pinMode(12, OUTPUT);
-  digitalWriteFast(12, LOW);
+  digitalWrite(12, LOW);
+  delay(1000);
   t.begin(fonction);
   t.trigger(500);
 }

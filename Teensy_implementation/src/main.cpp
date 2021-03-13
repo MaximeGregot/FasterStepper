@@ -4,7 +4,7 @@
 using namespace TeensyTimerTool;
 
 
-#define DELTA_HIGH 4.0
+#define DELTA_HIGH 3.0
 #define STEP_0  11
 #define STEP_1  0
 #define STEP_2  0
@@ -63,15 +63,15 @@ double ref[] = {2000, 828.427, 635.674, 535.898, 472.136, 426.844, 392.523, 365.
 
 struct stepper
 {
-volatile long n;         // position dans la liste ref[]
-volatile int dir;        // direction du mouvement (+/-1)
-volatile long pos;       // position du moteur
-volatile long aim;       // cible du moteur
-volatile double stepT;   // prochain temps de pause
-volatile double speed;   // temps de pause minimum pour le mouvement actuel
-volatile double delta;   // temps de pause restant avant le prochain pas
-volatile bool move;      // vrai si le moteur bouge
-volatile bool brake;     // vrai si le moteur freine
+long n;         // position dans la liste ref[]
+int dir;        // direction du mouvement (+/-1)
+long pos;       // position du moteur
+long aim;       // cible du moteur
+double stepT;   // prochain temps de pause
+double speed;   // temps de pause minimum pour le mouvement actuel
+double delta;   // temps de pause restant avant le prochain pas
+bool move;      // vrai si le moteur bouge
+bool brake;     // vrai si le moteur freine
 };
 
 struct controller
@@ -97,7 +97,7 @@ void initS(int i)
   s[i].pos = 0;
   s[i].aim = 0;
   s[i].stepT = 0;
-  s[i].speed = 100;
+  s[i].speed = 300.0;
   s[i].delta = 0;
   s[i].move = false;
   s[i].brake = false;
@@ -198,7 +198,7 @@ void pTimer()
     {
       if( ( (cmd[i].pos - s[i].pos) * (s[i].aim - s[i].pos) < 0) || (abs(cmd[i].pos - s[i].pos) < s[i].n) )
       {
-        s[i].aim = s[i].pos + s[i].dir * (s[i].n - 1);
+        s[i].aim = s[i].pos + s[i].dir * (s[i].n);  // le (n-1) a ete enleve
       }
       else
       {
@@ -246,7 +246,7 @@ void step(int i)
       if(s[i].n > abs(s[i].aim - s[i].pos)){s[i].brake = true;}
       else
       {
-        if(ref[s[i].n] < s[i].speed)
+        if(ref[s[i].n] > s[i].speed)
         {
           s[i].stepT = ref[s[i].n];
           s[i].n++;
@@ -288,8 +288,8 @@ void osTimer()
 
 void setup()
 {
-  //Serial.begin(9600);
-  delay(1000);
+  Serial.begin(9600);
+  delay(4000);
   for(int i = 0; i < 7; i++)
   {
     initS(i);
@@ -299,7 +299,7 @@ void setup()
   pinMode(STEP_0, OUTPUT);
   pinMode(DIR_0, OUTPUT);
   s[0].move = true;
-  ptimer.begin(pTimer, 20.0);
+  ptimer.begin(pTimer, 2.0);
   ostimer.begin(osTimer);
   ostimer.trigger(30.0);
   
@@ -308,8 +308,6 @@ void setup()
 void loop()
 {
 cmd[0].pos = 6400;
-delay(3000);
-
-cmd[0].pos = 0;
-delay(3000);
+delay(250);
+Serial.println(String(6400) + "\t aim : " + String(s[0].aim) + "\t pos : " + String(s[0].pos) + "\t n : " + String(s[0].n));
 }
