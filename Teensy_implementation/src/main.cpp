@@ -89,6 +89,7 @@ double timer;
 
 PeriodicTimer ptimer(GPT1);
 OneShotTimer  ostimer(GPT2);
+PeriodicTimer serial(TCK);
 
 void initS(int i)
 {
@@ -97,7 +98,7 @@ void initS(int i)
   s[i].pos = 0;
   s[i].aim = 0;
   s[i].stepT = 0;
-  s[i].speed = 300.0;
+  s[i].speed = 50.0;
   s[i].delta = 0;
   s[i].move = false;
   s[i].brake = false;
@@ -227,7 +228,7 @@ void pTimer()
 
 void step(int i)
 {
-  if(drfStep(i) == LOW)
+  if(drfStep(i) == LOW && s[i].move)
   {
     s[i].delta = DELTA_HIGH;
     dwfStep(i, HIGH);
@@ -289,7 +290,7 @@ void osTimer()
 void setup()
 {
   Serial.begin(9600);
-  delay(4000);
+  delay(2000);
   for(int i = 0; i < 7; i++)
   {
     initS(i);
@@ -299,15 +300,18 @@ void setup()
   pinMode(STEP_0, OUTPUT);
   pinMode(DIR_0, OUTPUT);
   s[0].move = true;
-  ptimer.begin(pTimer, 2.0);
+  ptimer.begin(pTimer, 100.0);
+  delay(200);
   ostimer.begin(osTimer);
-  ostimer.trigger(30.0);
+  ostimer.trigger(300.0);
   
 }
 
 void loop()
 {
 cmd[0].pos = 6400;
-delay(250);
-Serial.println(String(6400) + "\t aim : " + String(s[0].aim) + "\t pos : " + String(s[0].pos) + "\t n : " + String(s[0].n));
+delay(500);
+Serial.println(String(cmd[0].pos) + "\t aim : " + String(s[0].aim) + "\t pos : " + String(s[0].pos) + "\t n : " + String(s[0].n));
+cmd[0].pos = 0;
+delay(500);
 }
