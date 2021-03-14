@@ -308,7 +308,7 @@ void setup()
   pinMode(STEP_1, OUTPUT);
   pinMode(DIR_1, OUTPUT);
   ptimer.begin(pTimer, 20.0);
-  delay(200);
+  delay(5000);
   ostimer.begin(osTimer);
   ostimer.trigger(300.0);
   //serial.begin(suivi, 500000);
@@ -316,11 +316,10 @@ void setup()
 
 void loop()
 {
-cmd[0].pos = 3200;
-delay(800);
-
-cmd[0].pos = 0;
-delay(1500);
+  cmd[0].pos = 0;
+  delay(200);
+  cmd[0].pos = random(800, 3200);
+  delay(100);
 
 /*
 // 
