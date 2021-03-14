@@ -98,7 +98,7 @@ void initS(int i)
   s[i].pos = 0;
   s[i].aim = 0;
   s[i].stepT = 0;
-  s[i].speed = 50.0;
+  s[i].speed = 60.0;
   s[i].delta = 0;
   s[i].move = false;
   s[i].brake = false;
@@ -197,22 +197,24 @@ void pTimer()
   {
     if(s[i].move)
     {
-      if( ( (cmd[i].pos - s[i].pos) * (s[i].aim - s[i].pos) < 0) || (abs(cmd[i].pos - s[i].pos) < s[i].n) )
+      if( ( (cmd[i].pos - s[i].pos) * (s[i].aim - s[i].pos) < 0.0) || (abs(cmd[i].pos - s[i].pos) <= s[i].n) )
       {
-        s[i].aim = s[i].pos + s[i].dir * (s[i].n);  // le (n-1) a ete enleve
+        s[i].aim = s[i].pos + (s[i].dir * s[i].n);  // le (n-1) a ete enleve
       }
       else
       {
         s[i].aim = cmd[i].pos;
+        s[i].brake = false;
       }
     }
     else
     {
-      if(s[i].aim != s[i].pos)
+      if(s[i].aim != cmd[i].pos)
       {
         s[i].aim = cmd[i].pos;
-        s[i].move = true;
         setDir(i);
+        s[i].n = 0;
+        s[i].move = true;
       }
     }
   }
@@ -237,6 +239,7 @@ void step(int i)
   }
   else if (s[i].pos != s[i].aim)
   {
+    if(s[i].n >= abs(s[i].aim - s[i].pos)){s[i].brake = true;}
     if(s[i].brake)
     {
       s[i].n--;
@@ -244,28 +247,24 @@ void step(int i)
     }
     else
     {
-      if(s[i].n > abs(s[i].aim - s[i].pos)){s[i].brake = true;}
+      if (ref[s[i].n] > s[i].speed)
+      {
+        s[i].stepT = ref[s[i].n];
+        s[i].n++;
+      }
       else
       {
-        if(ref[s[i].n] > s[i].speed)
-        {
-          s[i].stepT = ref[s[i].n];
-          s[i].n++;
-        }
-        else
-        {
-          s[i].stepT = s[i].speed;
-        }
+        s[i].stepT = s[i].speed;
       }
     }
     s[i].delta = s[i].stepT - DELTA_HIGH;
     dwfStep(i, LOW);
-    s[i].pos += s[i].dir;
   }
-  else
+  if(s[i].pos == s[i].aim)
   {
     s[i].move = false;
     s[i].brake = false;
+    s[i].n = 0;
   }
   
   
@@ -303,18 +302,24 @@ void setup()
   pinMode(STEP_0, OUTPUT);
   pinMode(DIR_0, OUTPUT);
   s[0].move = true;
-  ptimer.begin(pTimer, 100.0);
+  ptimer.begin(pTimer, 20.0);
   delay(200);
   ostimer.begin(osTimer);
   ostimer.trigger(300.0);
-  serial.begin(suivi, 100000);
+  serial.begin(suivi, 1000);
 }
 
 void loop()
 {
+  /*
 cmd[0].pos = 6400;
-delay(500);
+delay(50);
 
 cmd[0].pos = 0;
 delay(500);
+*/
+
+cmd[0].pos = (double)random(0, 12800);
+delay(200);
+
 }
