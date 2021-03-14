@@ -20,6 +20,13 @@ using namespace TeensyTimerTool;
 #define DIR_5   0
 #define DIR_6   0
 
+#define DO4   3822
+#define RE4   3405
+#define MI4   3034
+#define FA4   2863
+#define SOL4  2551
+double notes[] = {DO4, RE4, MI4, FA4, SOL4};
+
 
 double ref[] = {2000, 828.427, 635.674, 535.898, 472.136, 426.844, 392.523, 365.352, 343.146, 324.555, 308.694, 294.954, 282.899, 272.212, 262.652, 254.033, 246.211, 239.07, 232.517, 226.474, 220.879, 215.68, 210.832, 206.296, 202.041, 198.039, 194.266, 190.7, 187.324, 184.122,
 181.078, 178.18, 175.417, 172.778, 170.256, 167.84, 165.525, 163.303, 161.168, 159.115, 157.138, 155.233, 153.396, 151.622, 149.909, 148.252, 146.649, 145.097, 143.594, 142.136, 140.721, 139.348, 138.015, 136.719, 135.459, 134.233, 133.039, 131.877, 130.745, 129.642,
@@ -98,7 +105,7 @@ void initS(int i)
   s[i].pos = 0;
   s[i].aim = 0;
   s[i].stepT = 0;
-  s[i].speed = 100.0 + (double)i;
+  s[i].speed = 35;
   s[i].delta = 0;
   s[i].move = false;
   s[i].brake = false;
@@ -309,21 +316,20 @@ void setup()
 
 void loop()
 {
-  /*
-cmd[0].pos = 6400;
-delay(50);
+cmd[0].pos = 3200;
+delay(800);
 
 cmd[0].pos = 0;
-delay(500);
-*/
+delay(1500);
 
-cmd[0].pos = (double)random(0, 6400);
-cmd[1].pos = (double)random(0, 6400);
-cmd[2].pos = (double)random(0, 12800);
-cmd[3].pos = (double)random(0, 12800);
-cmd[4].pos = (double)random(0, 12800);
-cmd[5].pos = (double)random(0, 12800);
-cmd[6].pos = (double)random(0, 12800);
-delay(300);
+/*
+// 
+for(int i = 0; i < 5; i++)
+{
+  cmd[0].pos = (double)random(0, 6400);
+  s[0].speed = notes[i];
+  delay(300);
+}
+*/
 
 }
