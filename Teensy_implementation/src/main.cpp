@@ -6,14 +6,14 @@ using namespace TeensyTimerTool;
 
 #define DELTA_HIGH 3.0
 #define STEP_0  11
-#define STEP_1  0
+#define STEP_1  9
 #define STEP_2  0
 #define STEP_3  0
 #define STEP_4  0
 #define STEP_5  0
 #define STEP_6  0
 #define DIR_0   12
-#define DIR_1   0
+#define DIR_1   10
 #define DIR_2   0
 #define DIR_3   0
 #define DIR_4   0
@@ -89,7 +89,7 @@ double timer;
 
 PeriodicTimer ptimer(GPT1);
 OneShotTimer  ostimer(GPT2);
-PeriodicTimer serial(TCK);
+//PeriodicTimer serial(TCK);    // suivi des valeurs
 
 void initS(int i)
 {
@@ -98,18 +98,16 @@ void initS(int i)
   s[i].pos = 0;
   s[i].aim = 0;
   s[i].stepT = 0;
-  s[i].speed = 60.0;
+  s[i].speed = 100.0 + (double)i;
   s[i].delta = 0;
   s[i].move = false;
   s[i].brake = false;
-  //Serial.println("Stepper initialisé");
 }
 
 void initCmd(int i)
 {
   cmd[i].pos = 0;
   cmd[i].input = false;
-  //Serial.println("Commande initialisée");
 }
 
 double setTimer()
@@ -140,7 +138,6 @@ double setTimer()
       s[i].delta -= timer;
     }
   }
-  //Serial.println(flag);
   return(timer);
 }
 
@@ -192,7 +189,6 @@ void setDir(int i)
 
 void pTimer()
 {
-  //Serial.println("pTimer");
   for(int i = 0; i < 7; i++)
   {
     if(s[i].move)
@@ -235,7 +231,6 @@ void step(int i)
     s[i].delta = DELTA_HIGH;
     dwfStep(i, HIGH);
     s[i].pos += s[i].dir;
-    //Serial.println("PAS");
   }
   else if (s[i].pos != s[i].aim)
   {
@@ -273,7 +268,6 @@ void step(int i)
 
 void osTimer()
 {
-  //Serial.println("osTimer");
   for(int i = 0; i < 7; i++)
   {
     if(flag & (1<<i))
@@ -284,14 +278,17 @@ void osTimer()
   ostimer.trigger(setTimer());
 }
 
+/*
 void suivi()
 {
-  Serial.println(String(cmd[0].pos) + "\t aim : " + String(s[0].aim) + "\t pos : " + String(s[0].pos) + "\t n : " + String(s[0].n));
+  Serial.println(String(cmd[0].pos) + "\t aim0 : " + String(s[0].aim) + "\t pos0 : " + String(s[0].pos) + "\t n0 : " + String(s[0].n));
+  Serial.println(String(cmd[1].pos) + "\t aim1 : " + String(s[1].aim) + "\t pos1 : " + String(s[1].pos) + "\t n1 : " + String(s[1].n));
 }
+*/
 
 void setup()
 {
-  Serial.begin(9600);
+  //Serial.begin(9600);
   delay(2000);
   for(int i = 0; i < 7; i++)
   {
@@ -301,12 +298,13 @@ void setup()
 
   pinMode(STEP_0, OUTPUT);
   pinMode(DIR_0, OUTPUT);
-  s[0].move = true;
+  pinMode(STEP_1, OUTPUT);
+  pinMode(DIR_1, OUTPUT);
   ptimer.begin(pTimer, 20.0);
   delay(200);
   ostimer.begin(osTimer);
   ostimer.trigger(300.0);
-  serial.begin(suivi, 1000);
+  //serial.begin(suivi, 500000);
 }
 
 void loop()
@@ -319,7 +317,13 @@ cmd[0].pos = 0;
 delay(500);
 */
 
-cmd[0].pos = (double)random(0, 12800);
-delay(200);
+cmd[0].pos = (double)random(0, 6400);
+cmd[1].pos = (double)random(0, 6400);
+cmd[2].pos = (double)random(0, 12800);
+cmd[3].pos = (double)random(0, 12800);
+cmd[4].pos = (double)random(0, 12800);
+cmd[5].pos = (double)random(0, 12800);
+cmd[6].pos = (double)random(0, 12800);
+delay(300);
 
 }
