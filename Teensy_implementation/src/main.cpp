@@ -2,6 +2,7 @@
 #include <WS2812Serial.h>
 #include "TeensyTimerTool.h"
 using namespace TeensyTimerTool;
+#include <nI2C.h>
 
 
 #define DELTA_HIGH 3.0
