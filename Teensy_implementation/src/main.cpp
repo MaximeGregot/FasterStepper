@@ -2,24 +2,54 @@
 #include <WS2812Serial.h>
 #include "TeensyTimerTool.h"
 using namespace TeensyTimerTool;
-#include <nI2C.h>
+#include <i2c_device.h>
 
 
-#define DELTA_HIGH 3.0
-#define STEP_0  11
-#define STEP_1  9
-#define STEP_2  0
-#define STEP_3  0
-#define STEP_4  0
-#define STEP_5  0
-#define STEP_6  0
-#define DIR_0   12
-#define DIR_1   10
-#define DIR_2   0
-#define DIR_3   0
-#define DIR_4   0
-#define DIR_5   0
-#define DIR_6   0
+#define DELTA_HIGH  3.0
+#define BIG_NUMBER  1000000
+#define MARGIN  150
+
+// I/O PINOUT
+
+#define TX_1    1
+#define TX_2    8
+#define TX_3    14
+#define TX_4    17
+#define TX_5    20
+
+#define SDA     18
+#define SCL     19
+
+#define STEP_0  0
+#define STEP_1  6
+#define STEP_2  7
+#define STEP_3  9
+#define STEP_4  10
+#define STEP_5  11
+#define STEP_6  12
+#define DIR_0   24
+#define DIR_1   25
+#define DIR_2   26
+#define DIR_3   27
+#define DIR_4   28
+#define DIR_5   29
+#define DIR_6   30
+
+#define MIN_SWITCH_0  31
+#define MIN_SWITCH_1  32
+#define MIN_SWITCH_2  33
+#define MIN_SWITCH_3  34
+#define MIN_SWITCH_4  35
+#define MIN_SWITCH_5  36
+#define MIN_SWITCH_6  37
+#define MAX_SWITCH_0  38
+#define MAX_SWITCH_1  39
+#define MAX_SWITCH_2  40
+#define MAX_SWITCH_3  41
+#define MAX_SWITCH_4  15
+#define MAX_SWITCH_5  16
+#define MAX_SWITCH_6  21
+
 
 #define DO4   3822
 #define RE4   3405
@@ -80,6 +110,11 @@ double speed;   // temps de pause minimum pour le mouvement actuel
 double delta;   // temps de pause restant avant le prochain pas
 bool move;      // vrai si le moteur bouge
 bool brake;     // vrai si le moteur freine
+long min;       // minimum absolute position (determined by the limit switch)
+long max;       // maximum ---
+bool minSwitch; // left limit switch is triggered
+bool maxSwitch; // right limit switch is triggered
+bool ok;        // checkpoint for every motor
 };
 
 struct controller
@@ -94,8 +129,11 @@ long cmdPos;
 byte flag = 0;
 byte emergency = 0;
 double timer;
+bool gameOn = false;
+bool ok;
 
 PeriodicTimer ptimer(GPT1);
+PeriodicTimer ticktimer(TCK);
 OneShotTimer  ostimer(GPT2);
 //PeriodicTimer serial(TCK);    // suivi des valeurs
 
@@ -106,10 +144,15 @@ void initS(int i)
   s[i].pos = 0;
   s[i].aim = 0;
   s[i].stepT = 0;
-  s[i].speed = 35;
+  s[i].speed = 100;
   s[i].delta = 0;
   s[i].move = false;
   s[i].brake = false;
+  s[i].min = -BIG_NUMBER;
+  s[i].max = BIG_NUMBER;
+  s[i].minSwitch = false;
+  s[i].maxSwitch = false;
+  s[i].ok = false;
 }
 
 void initCmd(int i)
@@ -151,7 +194,7 @@ double setTimer()
 
 void dwfDir(int i, int state)
 {
-  if(i == 0){digitalWriteFast(DIR_0, state);}
+  if(i == 0){digitalWriteFast(DIR_0, state);} // replace 'state' by '1 - state' if the motor turns the wrong way
   if(i == 1){digitalWriteFast(DIR_1, state);}
   if(i == 2){digitalWriteFast(DIR_2, state);}
   if(i == 3){digitalWriteFast(DIR_3, state);}
@@ -273,6 +316,81 @@ void step(int i)
   
 }
 
+void declarePinout()
+{
+  pinMode(STEP_0, OUTPUT);
+  pinMode(STEP_1, OUTPUT);
+  pinMode(STEP_2, OUTPUT);
+  pinMode(STEP_3, OUTPUT);
+  pinMode(STEP_4, OUTPUT);
+  pinMode(STEP_5, OUTPUT);
+  pinMode(STEP_6, OUTPUT);
+
+  pinMode(DIR_0, OUTPUT);
+  pinMode(DIR_1, OUTPUT);
+  pinMode(DIR_2, OUTPUT);
+  pinMode(DIR_3, OUTPUT);
+  pinMode(DIR_4, OUTPUT);
+  pinMode(DIR_5, OUTPUT);
+  pinMode(DIR_6, OUTPUT);
+
+  pinMode(MIN_SWITCH_0, INPUT_PULLUP);
+  pinMode(MIN_SWITCH_1, INPUT_PULLUP);
+  pinMode(MIN_SWITCH_2, INPUT_PULLUP);
+  pinMode(MIN_SWITCH_3, INPUT_PULLUP);
+  pinMode(MIN_SWITCH_4, INPUT_PULLUP);
+  pinMode(MIN_SWITCH_5, INPUT_PULLUP);
+  pinMode(MIN_SWITCH_6, INPUT_PULLUP);
+
+  pinMode(MAX_SWITCH_0, INPUT_PULLUP);
+  pinMode(MAX_SWITCH_1, INPUT_PULLUP);
+  pinMode(MAX_SWITCH_2, INPUT_PULLUP);
+  pinMode(MAX_SWITCH_3, INPUT_PULLUP);
+  pinMode(MAX_SWITCH_4, INPUT_PULLUP);
+  pinMode(MAX_SWITCH_5, INPUT_PULLUP);
+  pinMode(MAX_SWITCH_6, INPUT_PULLUP);
+
+  pinMode(TX_1, OUTPUT);
+  pinMode(TX_2, OUTPUT);
+  pinMode(TX_3, OUTPUT);
+  pinMode(TX_4, OUTPUT);
+  pinMode(TX_5, OUTPUT);
+}
+
+void intMinSwitch0(){s[0].minSwitch = (bool)digitalReadFast(MIN_SWITCH_0);}
+void intMinSwitch1(){s[1].minSwitch = (bool)digitalReadFast(MIN_SWITCH_1);}
+void intMinSwitch2(){s[2].minSwitch = (bool)digitalReadFast(MIN_SWITCH_2);}
+void intMinSwitch3(){s[3].minSwitch = (bool)digitalReadFast(MIN_SWITCH_3);}
+void intMinSwitch4(){s[4].minSwitch = (bool)digitalReadFast(MIN_SWITCH_4);}
+void intMinSwitch5(){s[5].minSwitch = (bool)digitalReadFast(MIN_SWITCH_5);}
+void intMinSwitch6(){s[6].minSwitch = (bool)digitalReadFast(MIN_SWITCH_6);}
+
+void intMaxSwitch0(){s[0].maxSwitch = (bool)digitalReadFast(MAX_SWITCH_0);}
+void intMaxSwitch1(){s[1].maxSwitch = (bool)digitalReadFast(MAX_SWITCH_1);}
+void intMaxSwitch2(){s[2].maxSwitch = (bool)digitalReadFast(MAX_SWITCH_2);}
+void intMaxSwitch3(){s[3].maxSwitch = (bool)digitalReadFast(MAX_SWITCH_3);}
+void intMaxSwitch4(){s[4].maxSwitch = (bool)digitalReadFast(MAX_SWITCH_4);}
+void intMaxSwitch5(){s[5].maxSwitch = (bool)digitalReadFast(MAX_SWITCH_5);}
+void intMaxSwitch6(){s[6].maxSwitch = (bool)digitalReadFast(MAX_SWITCH_6);}
+
+void interruptsInit()
+{
+  attachInterrupt(MIN_SWITCH_0, intMinSwitch0, CHANGE);
+  attachInterrupt(MIN_SWITCH_1, intMinSwitch1, CHANGE);
+  attachInterrupt(MIN_SWITCH_2, intMinSwitch2, CHANGE);
+  attachInterrupt(MIN_SWITCH_3, intMinSwitch3, CHANGE);
+  attachInterrupt(MIN_SWITCH_4, intMinSwitch4, CHANGE);
+  attachInterrupt(MIN_SWITCH_5, intMinSwitch5, CHANGE);
+  attachInterrupt(MIN_SWITCH_6, intMinSwitch6, CHANGE);
+  
+  attachInterrupt(MAX_SWITCH_0, intMaxSwitch0, CHANGE);
+  attachInterrupt(MAX_SWITCH_1, intMaxSwitch1, CHANGE);
+  attachInterrupt(MAX_SWITCH_2, intMaxSwitch2, CHANGE);
+  attachInterrupt(MAX_SWITCH_3, intMaxSwitch3, CHANGE);
+  attachInterrupt(MAX_SWITCH_4, intMaxSwitch4, CHANGE);
+  attachInterrupt(MAX_SWITCH_5, intMaxSwitch5, CHANGE);
+  attachInterrupt(MAX_SWITCH_6, intMaxSwitch6, CHANGE);
+}
 
 void osTimer()
 {
@@ -294,20 +412,107 @@ void suivi()
 }
 */
 
-void setup()
+void tickTimer()
 {
-  //Serial.begin(9600);
-  delay(2000);
-  for(int i = 0; i < 7; i++)
+  for(int i = 0; i<7; i++)
+  {
+    if((i < 2) || (s[0].maxSwitch || s[1].maxSwitch))
+    {
+      cmd[i].pos = s[i].pos;
+      s[0].ok = true;
+      s[1].ok = true;
+    }
+
+    if((s[i].minSwitch == true) && (s[i].min == -BIG_NUMBER))
+    {
+      s[i].min = s[i].pos;
+      cmd[i].pos = s[i].min;
+    }
+    else if((s[i].maxSwitch == true) && (s[i].max == BIG_NUMBER))
+    {
+      s[i].max = s[i].pos;
+      cmd[i].pos = s[i].max;
+      s[i].ok = true;
+    }
+    else if(!s[i].move)
+    {
+      if((i > 1) || (!s[0].move && !s[1].move))
+      {
+        if(!s[i].ok)
+        {
+          cmd[i].pos = BIG_NUMBER;
+          if(i < 2)
+          {
+            cmd[0].pos = BIG_NUMBER;
+            cmd[1].pos = BIG_NUMBER;
+          }
+        }
+        else
+        {
+          if(i > 1)
+          {
+            s[i].pos -= (s[i].min + s[i].max)/2;
+            cmd[i].pos = 0;
+          }
+          else
+          {
+            if(s[0].max < s[1].max)
+            {
+              s[0].pos -= (s[0].max + s[0].min)/2;
+              s[1].pos -= s[1].min - s[0].min;
+            }
+            else
+            {
+              s[1].pos -= (s[1].max + s[1].min)/2;
+              s[0].pos -= s[0].min - s[1].min;
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+void initialize()
+{
+  ok = false;
+  int i;
+  declarePinout();
+
+  for(i=0; i<7; i++)
   {
     initS(i);
     initCmd(i);
   }
+  for(i=0; i<7; i++)
+  {
+    cmd[i].pos = -BIG_NUMBER;
+  }
+  ticktimer.begin(tickTimer, 10.0);
+  bool notFinished = true;
+  while(notFinished)
+  {
+    notFinished = false;
+    for(i = 0; i < 7; i++)
+    {
+      if(!s[i].ok || !s[i].move)
+      {
+        notFinished = true;
+      }
+    }
+  }
 
-  pinMode(STEP_0, OUTPUT);
-  pinMode(DIR_0, OUTPUT);
-  pinMode(STEP_1, OUTPUT);
-  pinMode(DIR_1, OUTPUT);
+  for(i = 0; i < 7; i++)
+  {
+    long length = s[i].max - s[i].min - MARGIN;
+    s[i].min = -length/2;
+    s[i].max = length/2;
+  }
+}
+
+void setup()
+{
+  initialize();
   ptimer.begin(pTimer, 20.0);
   delay(5000);
   ostimer.begin(osTimer);
