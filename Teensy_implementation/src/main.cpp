@@ -144,7 +144,7 @@ void initS(int i)
   s[i].pos = 0;
   s[i].aim = 0;
   s[i].stepT = 0;
-  s[i].speed = 100;
+  s[i].speed = 500;
   s[i].delta = 0;
   s[i].move = false;
   s[i].brake = false;
@@ -512,9 +512,11 @@ void initialize()
 
 void setup()
 {
-  initialize();
+  delay(2000);
+  declarePinout();
+  //initialize();
   ptimer.begin(pTimer, 20.0);
-  delay(5000);
+  delay(2000);
   ostimer.begin(osTimer);
   ostimer.trigger(300.0);
   //serial.begin(suivi, 500000);
