@@ -56,7 +56,29 @@ using namespace TeensyTimerTool;
 #define MI4   3034
 #define FA4   2863
 #define SOL4  2551
-double notes[] = {DO4, RE4, MI4, FA4, SOL4};
+
+#define DO5   1910
+#define RE5   1703
+#define MI5   1517
+#define FA5   1432
+#define SOL5  1276
+
+#define DO6   955.6
+#define RE6   851.3
+#define MI6   758.4
+#define FA6   715.9
+#define SOL6  637.8
+#define LA6   568.2
+#define SI6   506.2
+
+#define DO7   477.8
+#define RE7   425.7
+#define MI7   379.2
+#define FA7   358.0
+#define SOL7  318.9
+#define LA7   284.1
+#define SI7   253.1
+double notes[] = {DO5, RE5, MI5, FA5, SOL5, DO6, RE6, MI6, FA6, SOL6, LA6, SI6, DO7, RE7, MI7, FA7, SOL7, LA7, SI7};
 
 
 double ref[] = {2000, 828.427, 635.674, 535.898, 472.136, 426.844, 392.523, 365.352, 343.146, 324.555, 308.694, 294.954, 282.899, 272.212, 262.652, 254.033, 246.211, 239.07, 232.517, 226.474, 220.879, 215.68, 210.832, 206.296, 202.041, 198.039, 194.266, 190.7, 187.324, 184.122,
@@ -123,6 +145,8 @@ long pos;     // position de la commande
 bool input;   // bouton du joueur
 };
 
+int compteur = 0;
+int variable = 0; //utilisee pour les tests
 stepper s[7];
 controller cmd[7];
 long cmdPos;
@@ -135,7 +159,7 @@ bool ok;
 PeriodicTimer ptimer(GPT1);
 PeriodicTimer ticktimer(TCK);
 OneShotTimer  ostimer(GPT2);
-//PeriodicTimer serial(TCK);    // suivi des valeurs
+PeriodicTimer serial(TCK);    // suivi des valeurs
 
 void initS(int i)
 {
@@ -144,7 +168,7 @@ void initS(int i)
   s[i].pos = 0;
   s[i].aim = 0;
   s[i].stepT = 0;
-  s[i].speed = 500;
+  s[i].speed = 200;
   s[i].delta = 0;
   s[i].move = false;
   s[i].brake = false;
@@ -357,25 +381,33 @@ void declarePinout()
   pinMode(TX_5, OUTPUT);
 }
 
-void intMinSwitch0(){s[0].minSwitch = (bool)digitalReadFast(MIN_SWITCH_0);}
-void intMinSwitch1(){s[1].minSwitch = (bool)digitalReadFast(MIN_SWITCH_1);}
-void intMinSwitch2(){s[2].minSwitch = (bool)digitalReadFast(MIN_SWITCH_2);}
-void intMinSwitch3(){s[3].minSwitch = (bool)digitalReadFast(MIN_SWITCH_3);}
-void intMinSwitch4(){s[4].minSwitch = (bool)digitalReadFast(MIN_SWITCH_4);}
-void intMinSwitch5(){s[5].minSwitch = (bool)digitalReadFast(MIN_SWITCH_5);}
-void intMinSwitch6(){s[6].minSwitch = (bool)digitalReadFast(MIN_SWITCH_6);}
+void intMinSwitch0()
+{
+  compteur ++;
+  if(digitalReadFast(MIN_SWITCH_0) == HIGH)
+  {
+    cmd[0].pos = -6400;
+  }
+  //s[0].minSwitch = (bool)digitalReadFast(MIN_SWITCH_0);
+}
+void intMinSwitch1(){s[1].minSwitch = !(bool)digitalReadFast(MIN_SWITCH_1);}
+void intMinSwitch2(){s[2].minSwitch = !(bool)digitalReadFast(MIN_SWITCH_2);}
+void intMinSwitch3(){s[3].minSwitch = !(bool)digitalReadFast(MIN_SWITCH_3);}
+void intMinSwitch4(){s[4].minSwitch = !(bool)digitalReadFast(MIN_SWITCH_4);}
+void intMinSwitch5(){s[5].minSwitch = !(bool)digitalReadFast(MIN_SWITCH_5);}
+void intMinSwitch6(){s[6].minSwitch = !(bool)digitalReadFast(MIN_SWITCH_6);}
 
-void intMaxSwitch0(){s[0].maxSwitch = (bool)digitalReadFast(MAX_SWITCH_0);}
-void intMaxSwitch1(){s[1].maxSwitch = (bool)digitalReadFast(MAX_SWITCH_1);}
-void intMaxSwitch2(){s[2].maxSwitch = (bool)digitalReadFast(MAX_SWITCH_2);}
-void intMaxSwitch3(){s[3].maxSwitch = (bool)digitalReadFast(MAX_SWITCH_3);}
-void intMaxSwitch4(){s[4].maxSwitch = (bool)digitalReadFast(MAX_SWITCH_4);}
-void intMaxSwitch5(){s[5].maxSwitch = (bool)digitalReadFast(MAX_SWITCH_5);}
-void intMaxSwitch6(){s[6].maxSwitch = (bool)digitalReadFast(MAX_SWITCH_6);}
+void intMaxSwitch0(){s[0].maxSwitch = !(bool)digitalReadFast(MAX_SWITCH_0);}
+void intMaxSwitch1(){s[1].maxSwitch = !(bool)digitalReadFast(MAX_SWITCH_1);}
+void intMaxSwitch2(){s[2].maxSwitch = !(bool)digitalReadFast(MAX_SWITCH_2);}
+void intMaxSwitch3(){s[3].maxSwitch = !(bool)digitalReadFast(MAX_SWITCH_3);}
+void intMaxSwitch4(){s[4].maxSwitch = !(bool)digitalReadFast(MAX_SWITCH_4);}
+void intMaxSwitch5(){s[5].maxSwitch = !(bool)digitalReadFast(MAX_SWITCH_5);}
+void intMaxSwitch6(){s[6].maxSwitch = !(bool)digitalReadFast(MAX_SWITCH_6);}
 
 void interruptsInit()
 {
-  attachInterrupt(MIN_SWITCH_0, intMinSwitch0, CHANGE);
+  attachInterrupt(MIN_SWITCH_0, intMinSwitch0, RISING); //A CHANGER
   attachInterrupt(MIN_SWITCH_1, intMinSwitch1, CHANGE);
   attachInterrupt(MIN_SWITCH_2, intMinSwitch2, CHANGE);
   attachInterrupt(MIN_SWITCH_3, intMinSwitch3, CHANGE);
@@ -404,13 +436,14 @@ void osTimer()
   ostimer.trigger(setTimer());
 }
 
-/*
+
 void suivi()
 {
-  Serial.println(String(cmd[0].pos) + "\t aim0 : " + String(s[0].aim) + "\t pos0 : " + String(s[0].pos) + "\t n0 : " + String(s[0].n));
-  Serial.println(String(cmd[1].pos) + "\t aim1 : " + String(s[1].aim) + "\t pos1 : " + String(s[1].pos) + "\t n1 : " + String(s[1].n));
+  Serial.println(String(cmd[0].pos) + "\t aim0 : " + String(s[0].aim) + "\t pos0 : " + String(s[0].pos) + "\t n0 : " + String(s[0].n) + "\t compteur : " + String(compteur));
+  
+  //Serial.println(String(cmd[1].pos) + "\t aim1 : " + String(s[1].aim) + "\t pos1 : " + String(s[1].pos) + "\t n1 : " + String(s[1].n));
 }
-*/
+
 
 void tickTimer()
 {
@@ -514,29 +547,38 @@ void setup()
 {
   delay(2000);
   declarePinout();
+  interruptsInit();
+  Serial.begin(9600);
   //initialize();
+  initS(0);
+  initCmd(0);
   ptimer.begin(pTimer, 20.0);
   delay(2000);
   ostimer.begin(osTimer);
   ostimer.trigger(300.0);
-  //serial.begin(suivi, 500000);
+  serial.begin(suivi, 100000);
 }
 
 void loop()
 {
-  cmd[0].pos = 0;
-  delay(200);
-  cmd[0].pos = random(800, 3200);
-  delay(100);
-
 /*
-// 
-for(int i = 0; i < 5; i++)
-{
-  cmd[0].pos = (double)random(0, 6400);
-  s[0].speed = notes[i];
-  delay(300);
-}
+  s[0].speed = random(30, 500);
+  cmd[0].pos = 0;
+  delay(1000);
+  cmd[0].pos = random(8000, 32000);
+  delay(2000);
 */
+
+for(variable = 0; variable < (sizeof(notes) / sizeof(notes[0])); variable++)
+{
+  s[0].speed = notes[variable];
+  compteur = 0;
+  cmd[0].pos = 0;
+  delay(2000);
+  compteur = 0;
+  cmd[0].pos = 1600;
+  delay(2000);
+}
+
 
 }
