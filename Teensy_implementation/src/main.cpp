@@ -145,6 +145,7 @@ long pos;     // position de la commande
 bool input;   // bouton du joueur
 };
 
+int compteur = 0;
 int variable = 0; //utilisee pour les tests
 stepper s[7];
 controller cmd[7];
@@ -382,7 +383,11 @@ void declarePinout()
 
 void intMinSwitch0()
 {
-  cmd[0].pos = s[0].pos;
+  compteur ++;
+  if(digitalReadFast(MIN_SWITCH_0) == HIGH)
+  {
+    cmd[0].pos = -6400;
+  }
   //s[0].minSwitch = (bool)digitalReadFast(MIN_SWITCH_0);
 }
 void intMinSwitch1(){s[1].minSwitch = !(bool)digitalReadFast(MIN_SWITCH_1);}
@@ -402,7 +407,7 @@ void intMaxSwitch6(){s[6].maxSwitch = !(bool)digitalReadFast(MAX_SWITCH_6);}
 
 void interruptsInit()
 {
-  attachInterrupt(MIN_SWITCH_0, intMinSwitch0, FALLING); //A CHANGER
+  attachInterrupt(MIN_SWITCH_0, intMinSwitch0, RISING); //A CHANGER
   attachInterrupt(MIN_SWITCH_1, intMinSwitch1, CHANGE);
   attachInterrupt(MIN_SWITCH_2, intMinSwitch2, CHANGE);
   attachInterrupt(MIN_SWITCH_3, intMinSwitch3, CHANGE);
@@ -434,8 +439,9 @@ void osTimer()
 
 void suivi()
 {
-  Serial.println(String(cmd[0].pos) + "\t aim0 : " + String(s[0].aim) + "\t pos0 : " + String(s[0].pos) + "\t n0 : " + String(s[0].n));
-  Serial.println(String(cmd[1].pos) + "\t aim1 : " + String(s[1].aim) + "\t pos1 : " + String(s[1].pos) + "\t n1 : " + String(s[1].n));
+  Serial.println(String(cmd[0].pos) + "\t aim0 : " + String(s[0].aim) + "\t pos0 : " + String(s[0].pos) + "\t n0 : " + String(s[0].n) + "\t compteur : " + String(compteur));
+  
+  //Serial.println(String(cmd[1].pos) + "\t aim1 : " + String(s[1].aim) + "\t pos1 : " + String(s[1].pos) + "\t n1 : " + String(s[1].n));
 }
 
 
@@ -550,7 +556,7 @@ void setup()
   delay(2000);
   ostimer.begin(osTimer);
   ostimer.trigger(300.0);
-  serial.begin(suivi, 250000);
+  serial.begin(suivi, 100000);
 }
 
 void loop()
@@ -566,10 +572,12 @@ void loop()
 for(variable = 0; variable < (sizeof(notes) / sizeof(notes[0])); variable++)
 {
   s[0].speed = notes[variable];
+  compteur = 0;
   cmd[0].pos = 0;
-  delay(400);
-  cmd[0].pos = 6400;
-  delay(400);
+  delay(2000);
+  compteur = 0;
+  cmd[0].pos = 1600;
+  delay(2000);
 }
 
 
