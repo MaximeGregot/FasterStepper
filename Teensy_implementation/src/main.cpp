@@ -3,7 +3,7 @@
 #include "TeensyTimerTool.h"
 using namespace TeensyTimerTool;
 #include <i2c_device.h>
-
+#include <SimpleFOC.h>
 
 #define DELTA_HIGH  3.0
 #define BIG_NUMBER  1000000
