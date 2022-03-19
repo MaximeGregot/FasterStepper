@@ -136,17 +136,21 @@ long min;       // minimum absolute position (determined by the limit switch)
 long max;       // maximum ---
 bool minSwitch; // left limit switch is triggered
 bool maxSwitch; // right limit switch is triggered
+bool lTouch;	// left limit switch was touched once
+bool rTouch;	// right ---
+bool lOk;		// left limit switch was set up
+bool rOk;		// right ---
 bool ok;        // checkpoint for every motor
 };
 
 struct controller
 {
-long pos;     // position de la commande
-bool input;   // bouton du joueur
+long pos;		// position de la commande
+bool input;		// bouton du joueur
 };
 
 int compteur = 0;
-int variable = 0; //utilisee pour les tests
+int variable = 0;	//used for testing
 stepper s[7];
 controller cmd[7];
 long cmdPos;
@@ -156,10 +160,10 @@ double timer;
 bool gameOn = false;
 bool ok;
 
-PeriodicTimer ptimer(GPT1);
-PeriodicTimer ticktimer(TCK);
-OneShotTimer  ostimer(GPT2);
-PeriodicTimer serial(TCK);    // suivi des valeurs
+PeriodicTimer ptimer(GPT1);	// adjusts the aim of each motor, based on the controller's position
+PeriodicTimer ticktimer(TCK);	// initializes the position of every motor
+OneShotTimer  ostimer(GPT2);	// calls the "step" function when a motor needs to move
+PeriodicTimer serial(TCK);	// variable monitoring
 
 void initS(int i)
 {
@@ -179,46 +183,46 @@ void initS(int i)
   s[i].ok = false;
 }
 
-void initCmd(int i)
+void initCmd(int i)	// initializes the "cmd" entities
 {
   cmd[i].pos = 0;
   cmd[i].input = false;
 }
 
-double setTimer()
+double setTimer()	// sets the new timer before the next "step()" function
 {
   timer = 200;
   flag = 0;
 
   for (int i = 0; i < 7; i++)
   {
-    if (s[i].move && (s[i].delta < timer))
-    {
-      if (s[i].delta == timer)
-      {
-        flag |= (1 << i);
-      }
-      else
-      {
-        flag = (1 << i);
-        timer = s[i].delta;
-      }
-    }
+	if (s[i].move && (s[i].delta < timer))
+	{
+	  if (s[i].delta == timer)
+	  {
+		flag |= (1 << i);
+	  }
+	  else
+	  {
+		flag = (1 << i);
+		timer = s[i].delta;
+	  }
+	}
   }
   timer = max(timer, 0.1);
   for(int i = 0; i < 7; i++)
   {
-    if(s[i].move)
-    {
-      s[i].delta -= timer;
-    }
+	if(s[i].move)
+	{
+	  s[i].delta -= timer;
+	}
   }
   return(timer);
 }
 
 void dwfDir(int i, int state)
 {
-  if(i == 0){digitalWriteFast(DIR_0, state);} // replace 'state' by '1 - state' if the motor turns the wrong way
+  if(i == 0){digitalWriteFast(DIR_0, state);}	// replace "state" by "1 - state" if the motor turns the wrong way round
   if(i == 1){digitalWriteFast(DIR_1, state);}
   if(i == 2){digitalWriteFast(DIR_2, state);}
   if(i == 3){digitalWriteFast(DIR_3, state);}
@@ -251,96 +255,94 @@ void setDir(int i)
 {
   if(s[i].aim - s[i].pos < 0)
   {
-    s[i].dir = -1;
-    dwfDir(i, LOW);
+	s[i].dir = -1;
+	dwfDir(i, LOW);
   }
   else
   {
-    s[i].dir = 1;
-    dwfDir(i, HIGH);
+	s[i].dir = 1;
+	dwfDir(i, HIGH);
   }
 }
 
 
-void pTimer()
+void pTimer()	// adjusts the aim of each motor, based on the controller's position
 {
   for(int i = 0; i < 7; i++)
   {
-    if(s[i].move)
-    {
-      if( ( (cmd[i].pos - s[i].pos) * (s[i].aim - s[i].pos) < 0.0) || (abs(cmd[i].pos - s[i].pos) <= s[i].n) )
-      {
-        s[i].aim = s[i].pos + (s[i].dir * s[i].n);  // le (n-1) a ete enleve
-      }
-      else
-      {
-        s[i].aim = cmd[i].pos;
-        s[i].brake = false;
-      }
-    }
-    else
-    {
-      if(s[i].aim != cmd[i].pos)
-      {
-        s[i].aim = cmd[i].pos;
-        setDir(i);
-        s[i].n = 0;
-        s[i].move = true;
-      }
-    }
+	if(s[i].move)
+	{
+	  if( ( (cmd[i].pos - s[i].pos) * (s[i].aim - s[i].pos) < 0.0) || (abs(cmd[i].pos - s[i].pos) <= s[i].n) )
+	  {
+		s[i].aim = s[i].pos + (s[i].dir * s[i].n);	// le (n-1) a ete enleve
+	  }
+	  else
+	  {
+		s[i].aim = cmd[i].pos;
+		s[i].brake = false;
+	  }
+	}
+	else
+	{
+	  if(s[i].aim != cmd[i].pos)
+	  {
+		s[i].aim = cmd[i].pos;
+		setDir(i);
+		s[i].n = 0;
+		s[i].move = true;
+	  }
+	}
   }
   for(int i = 0; i < 7; i++)
   {
-    if(emergency & (1<<i))
-    {
-      s[i].move = false;
-    }
+	if(emergency & (1<<i))
+	{
+	  s[i].move = false;
+	}
   }
 }
 
 
-void step(int i)
+void step(int i)	// Makes the motor move one step ahead and sets the speed according to the max speed
 {
   if(drfStep(i) == LOW && s[i].move)
   {
-    s[i].delta = DELTA_HIGH;
-    dwfStep(i, HIGH);
-    s[i].pos += s[i].dir;
+	s[i].delta = DELTA_HIGH;
+	dwfStep(i, HIGH);
+	s[i].pos += s[i].dir;
   }
   else if (s[i].pos != s[i].aim)
   {
-    if(s[i].n >= abs(s[i].aim - s[i].pos)){s[i].brake = true;}
-    if(s[i].brake)
-    {
-      s[i].n--;
-      s[i].stepT = ref[s[i].n-1];
-    }
-    else
-    {
-      if (ref[s[i].n] > s[i].speed)
-      {
-        s[i].stepT = ref[s[i].n];
-        s[i].n++;
-      }
-      else
-      {
-        s[i].stepT = s[i].speed;
-      }
-    }
-    s[i].delta = s[i].stepT - DELTA_HIGH;
-    dwfStep(i, LOW);
+	if(s[i].n >= abs(s[i].aim - s[i].pos)){s[i].brake = true;}
+	if(s[i].brake)
+	{
+	  s[i].n--;
+	  s[i].stepT = ref[s[i].n-1];
+	}
+	else
+	{
+	  if (ref[s[i].n] > s[i].speed)
+	  {
+		s[i].stepT = ref[s[i].n];
+		s[i].n++;
+	  }
+	  else
+	  {
+		s[i].stepT = s[i].speed;
+	  }
+	}
+	s[i].delta = s[i].stepT - DELTA_HIGH;
+	dwfStep(i, LOW);
   }
   if(s[i].pos == s[i].aim)
   {
-    s[i].move = false;
-    s[i].brake = false;
-    s[i].n = 0;
+	s[i].move = false;
+	s[i].brake = false;
+	s[i].n = 0;
   }
-  
-  
 }
 
-void declarePinout()
+void declarePinout()	// initializes the pinout
 {
   pinMode(STEP_0, OUTPUT);
   pinMode(STEP_1, OUTPUT);
@@ -386,9 +388,9 @@ void intMinSwitch0()
   compteur ++;
   if(digitalReadFast(MIN_SWITCH_0) == HIGH)
   {
-    cmd[0].pos = -6400;
+	cmd[0].pos = -6400;
   }
-  //s[0].minSwitch = (bool)digitalReadFast(MIN_SWITCH_0);
+	//s[0].minSwitch = (bool)digitalReadFast(MIN_SWITCH_0);
 }
 void intMinSwitch1(){s[1].minSwitch = !(bool)digitalReadFast(MIN_SWITCH_1);}
 void intMinSwitch2(){s[2].minSwitch = !(bool)digitalReadFast(MIN_SWITCH_2);}
@@ -428,10 +430,10 @@ void osTimer()
 {
   for(int i = 0; i < 7; i++)
   {
-    if(flag & (1<<i))
-    {
-      step(i);
-    }
+	if(flag & (1<<i))
+	{
+	  step(i);
+	}
   }
   ostimer.trigger(setTimer());
 }
@@ -449,60 +451,60 @@ void tickTimer()
 {
   for(int i = 0; i<7; i++)
   {
-    if((i < 2) || (s[0].maxSwitch || s[1].maxSwitch))
-    {
-      cmd[i].pos = s[i].pos;
-      s[0].ok = true;
-      s[1].ok = true;
-    }
+	if((i < 2) || (s[0].maxSwitch || s[1].maxSwitch))	// CHANGE : use "rOk" and "lOk" + "lTouch" and "rTouch"
+	{
+	  cmd[i].pos = s[i].pos;
+	  s[0].ok = true;
+	  s[1].ok = true;
+	}
 
-    if((s[i].minSwitch == true) && (s[i].min == -BIG_NUMBER))
-    {
-      s[i].min = s[i].pos;
-      cmd[i].pos = s[i].min;
-    }
-    else if((s[i].maxSwitch == true) && (s[i].max == BIG_NUMBER))
-    {
-      s[i].max = s[i].pos;
-      cmd[i].pos = s[i].max;
-      s[i].ok = true;
-    }
-    else if(!s[i].move)
-    {
-      if((i > 1) || (!s[0].move && !s[1].move))
-      {
-        if(!s[i].ok)
-        {
-          cmd[i].pos = BIG_NUMBER;
-          if(i < 2)
-          {
-            cmd[0].pos = BIG_NUMBER;
-            cmd[1].pos = BIG_NUMBER;
-          }
-        }
-        else
-        {
-          if(i > 1)
-          {
-            s[i].pos -= (s[i].min + s[i].max)/2;
-            cmd[i].pos = 0;
-          }
-          else
-          {
-            if(s[0].max < s[1].max)
-            {
-              s[0].pos -= (s[0].max + s[0].min)/2;
-              s[1].pos -= s[1].min - s[0].min;
-            }
-            else
-            {
-              s[1].pos -= (s[1].max + s[1].min)/2;
-              s[0].pos -= s[0].min - s[1].min;
-            }
-          }
-        }
-      }
-    }
+	if((s[i].minSwitch == true) && (s[i].min == -BIG_NUMBER))
+	{
+	  s[i].min = s[i].pos;
+	  cmd[i].pos = s[i].min;
+	}
+	else if((s[i].maxSwitch == true) && (s[i].max == BIG_NUMBER))
+	{
+	  s[i].max = s[i].pos;
+	  cmd[i].pos = s[i].max;
+	  s[i].ok = true;
+	}
+	else if(!s[i].move)
+	{
+	  if((i > 1) || (!s[0].move && !s[1].move))
+	  {
+		if(!s[i].ok)
+		{
+		  cmd[i].pos = BIG_NUMBER;
+		  if(i < 2)
+		  {
+			cmd[0].pos = BIG_NUMBER;
+			cmd[1].pos = BIG_NUMBER;
+		  }
+		}
+		else
+		{
+		  if(i > 1)
+		  {
+			s[i].pos -= (s[i].min + s[i].max)/2;
+			cmd[i].pos = 0;
+		  }
+		  else
+		  {
+			if(s[0].max < s[1].max)
+			{
+			  s[0].pos -= (s[0].max + s[0].min)/2;
+			  s[1].pos -= s[1].min - s[0].min;
+			}
+			else
+			{
+			  s[1].pos -= (s[1].max + s[1].min)/2;
+			  s[0].pos -= s[0].min - s[1].min;
+			}
+		  }
+		}
+	  }
+	}
   }
 }
 
@@ -514,32 +516,32 @@ void initialize()
 
   for(i=0; i<7; i++)
   {
-    initS(i);
-    initCmd(i);
+	initS(i);
+	initCmd(i);
   }
   for(i=0; i<7; i++)
   {
-    cmd[i].pos = -BIG_NUMBER;
+	cmd[i].pos = -BIG_NUMBER;
   }
   ticktimer.begin(tickTimer, 10.0);
   bool notFinished = true;
   while(notFinished)
   {
-    notFinished = false;
-    for(i = 0; i < 7; i++)
-    {
-      if(!s[i].ok || !s[i].move)
-      {
-        notFinished = true;
-      }
-    }
+	notFinished = false;
+	for(i = 0; i < 7; i++)
+	{
+	  if(!s[i].ok || !s[i].move)
+	  {
+		notFinished = true;
+	  }
+	}
   }
 
   for(i = 0; i < 7; i++)
   {
-    long length = s[i].max - s[i].min - MARGIN;
-    s[i].min = -length/2;
-    s[i].max = length/2;
+	long length = s[i].max - s[i].min - MARGIN;
+	s[i].min = -length/2;
+	s[i].max = length/2;
   }
 }
 
