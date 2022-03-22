@@ -187,23 +187,7 @@ void initCommand(int i) // initializes the "cmd" entities
   cmd[i].input = false;
 }
 
-void initAllSwitches() // initializes all limit switches
-{
-  intMinSwitch0();
-  intMinSwitch1();
-  intMinSwitch2();
-  intMinSwitch3();
-  intMinSwitch4();
-  intMinSwitch5();
-  intMinSwitch6();
-  intMaxSwitch0();
-  intMaxSwitch1();
-  intMaxSwitch2();
-  intMaxSwitch3();
-  intMaxSwitch4();
-  intMaxSwitch5();
-  intMaxSwitch6();
-}
+
 
 void declarePinout() // initializes the pinout
 {
@@ -470,7 +454,7 @@ void setEmergency(int i) // Stops the motor immediately
 
 void okEmergency(int i) // Acquits the emergency
 {
-  emergency &= ~
+  emergency &= ~(1<<i);
 }
 
 void intMinSwitch0()
@@ -586,6 +570,24 @@ void intMaxSwitch6()
   {
     setEmergency(6);
   }
+}
+
+void initAllSwitches() // initializes all limit switches
+{
+  intMinSwitch0();
+  intMinSwitch1();
+  intMinSwitch2();
+  intMinSwitch3();
+  intMinSwitch4();
+  intMinSwitch5();
+  intMinSwitch6();
+  intMaxSwitch0();
+  intMaxSwitch1();
+  intMaxSwitch2();
+  intMaxSwitch3();
+  intMaxSwitch4();
+  intMaxSwitch5();
+  intMaxSwitch6();
 }
 
 void interruptsInit()
