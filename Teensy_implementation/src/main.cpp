@@ -786,7 +786,7 @@ void loop()
     delay(2000);
   */
 
-  for (variable = 0; variable < (sizeof(notes) / sizeof(notes[0])); variable++)
+  for (variable = 0; variable < (signed)(sizeof(notes) / sizeof(notes[0])); variable++)
   {
     s[0].speed = notes[variable];
     compteur = 0;
