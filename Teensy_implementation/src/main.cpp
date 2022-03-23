@@ -6,7 +6,7 @@ using namespace TeensyTimerTool;
 #include <SimpleFOC.h>
 
 #define DELTA_HIGH 3.0
-#define BIG_NUMBER 1000000
+#define INFINITY 1000000
 #define MARGIN 150
 
 // I/O PINOUT
@@ -171,8 +171,8 @@ void initSteppers(int i)
   s[i].delta = 0;
   s[i].move = false;
   s[i].brake = false;
-  s[i].min = -BIG_NUMBER;
-  s[i].max = BIG_NUMBER;
+  s[i].min = -INFINITY;
+  s[i].max = INFINITY;
   s[i].minSwitch = false;
   s[i].maxSwitch = false;
   s[i].lTouch = false;
@@ -186,8 +186,6 @@ void initCommand(int i) // initializes the "cmd" entities
   cmd[i].pos = 0;
   cmd[i].input = false;
 }
-
-
 
 void declarePinout() // initializes the pinout
 {
@@ -454,7 +452,7 @@ void setEmergency(int i) // Stops the motor immediately
 
 void okEmergency(int i) // Acquits the emergency
 {
-  emergency &= ~(1<<i);
+  emergency &= ~(1 << i);
 }
 
 void intMinSwitch0()
@@ -635,27 +633,79 @@ void tickTimer()
 
     if (!s[i].lTouch)
     {
-      if (emergency & (1 << i))
+      if (emergency & (1 << i)) // clears emergency ; moves out of the switch
       {
-        okEmergency(i);
+        if((i < 2) && (emergency & ~0b11))
+        {
+          // clear emergency for 0 and 1
+        }
+        else
+        {
+          okEmergency(i);
         s[i].lTouch = true;
-        // s'ecarter de l'interrupteur
+        cmd[i].pos = s[i].pos + MARGIN;
+        }
+      }
+      else // moves to the left quickly
+      {
+        s[i].speed = 40;
+        cmd[i].pos = -INFINITY;
+      }
+    }
+    else if (!s[i].lOk)
+    {
+      if (emergency & (1 << i)) // clears emergency ; moves out of the switch
+      {
+        s[i].min = s[i].pos;
+        okEmergency(i);
+        s[i].lOk = true;
+        cmd[i].pos = s[i].min + MARGIN;
+      }
+      else if (s[i].pos == cmd[i].pos) // moves left slowly
+      {
+        s[i].speed = 400;
+        cmd[i].pos = -INFINITY;
+      }
+      if (!s[i].rTouch)
+      {
+        if (emergency & (1 << i)) // clears emergency ; moves out of the switch
+        {
+          okEmergency(i);
+          s[i].rTouch = true;
+          cmd[i].pos = s[i].pos - MARGIN;
+        }
+        else // moves to the right quickly
+        {
+          s[i].speed = 40;
+          cmd[i].pos = INFINITY;
+        }
+      }
+      else if (!s[i].rOk)
+      {
+        if (emergency & (1 << i)) // clears emergency ; moves out of the switch
+        {
+          s[i].max = s[i].pos;
+          okEmergency(i);
+          s[i].lOk = true;
+          cmd[i].pos = s[i].max - MARGIN;
+        }
+        else if (s[i].pos == cmd[i].pos) // moves right slowly
+        {
+          s[i].speed = 400;
+          cmd[i].pos = INFINITY;
+        }
       }
       else
       {
-        s[i].speed = 40;
-        cmd[i].pos = -BIG_NUMBER;
-      }
-    }
-    else if(!s[i].lOk)
-    {
-      if(emergency & (1<<i))
-      {
-        // enlever emergency ; bouger vers +infini
-      }
-      else if(s[i].pos == cmd[i].pos)
-      {
-        // bouger vers -infini
+        if (i >= 2)
+        {
+          long middle = (s[i].min + s[i].max) / 2;
+          long delta = s[i].max - s[i].min - 2 * MARGIN;
+          s[i].min = middle - delta;
+          s[i].max = middle + delta;
+          s[i].pos -= middle;
+          cmd[i].pos -= middle;
+        }
       }
     }
   }
@@ -673,12 +723,12 @@ void tickTimer()
       s[1].ok = true;
     }
 
-    if ((s[i].minSwitch == true) && (s[i].min == -BIG_NUMBER))
+    if ((s[i].minSwitch == true) && (s[i].min == -INFINITY))
     {
       s[i].min = s[i].pos;
       cmd[i].pos = s[i].min;
     }
-    else if ((s[i].maxSwitch == true) && (s[i].max == BIG_NUMBER))
+    else if ((s[i].maxSwitch == true) && (s[i].max == INFINITY))
     {
       s[i].max = s[i].pos;
       cmd[i].pos = s[i].max;
@@ -690,11 +740,11 @@ void tickTimer()
       {
         if (!s[i].ok)
         {
-          cmd[i].pos = BIG_NUMBER;
+          cmd[i].pos = INFINITY;
           if (i < 2)
           {
-            cmd[0].pos = BIG_NUMBER;
-            cmd[1].pos = BIG_NUMBER;
+            cmd[0].pos = INFINITY;
+            cmd[1].pos = INFINITY;
           }
         }
         else
@@ -736,7 +786,7 @@ void initialize()
   }
   for (i = 0; i < 7; i++)
   {
-    cmd[i].pos = -BIG_NUMBER;
+    cmd[i].pos = -INFINITY;
   }
   ticktimer.begin(tickTimer, 10.0);
   bool notFinished = true;
