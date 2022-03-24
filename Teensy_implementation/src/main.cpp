@@ -630,20 +630,23 @@ void tickTimer()
 {
   for (int i = 0; i < 7; i++)
   {
-
     if (!s[i].lTouch)
     {
       if (emergency & (1 << i)) // clears emergency ; moves out of the switch
       {
-        if((i < 2) && (emergency & ~0b11))
+        if ((i < 2) && ((emergency & 0b11) == 0b11))
         {
-          // clear emergency for 0 and 1
+          emergency &= ~0b11;
+          s[0].lTouch = true;
+          s[1].lTouch = true;
+          cmd[0].pos = s[0].pos + MARGIN;
+          cmd[1].pos = s[1].pos + MARGIN;
         }
-        else
+        else if (i >= 2)
         {
           okEmergency(i);
-        s[i].lTouch = true;
-        cmd[i].pos = s[i].pos + MARGIN;
+          s[i].lTouch = true;
+          cmd[i].pos = s[i].pos + MARGIN;
         }
       }
       else // moves to the left quickly
@@ -656,56 +659,99 @@ void tickTimer()
     {
       if (emergency & (1 << i)) // clears emergency ; moves out of the switch
       {
-        s[i].min = s[i].pos;
-        okEmergency(i);
-        s[i].lOk = true;
-        cmd[i].pos = s[i].min + MARGIN;
+        if ((i < 2) && ((emergency & 0b11) == 0b11))
+        {
+          emergency &= ~0b11;
+          s[0].min = s[0].pos;
+          s[1].min = s[1].pos;
+          s[0].lTouch = true;
+          s[1].lTouch = true;
+          cmd[0].pos = s[0].min + MARGIN;
+          cmd[1].pos = s[1].min + MARGIN;
+        }
+        else if (i >= 2)
+        {
+          s[i].min = s[i].pos;
+          okEmergency(i);
+          s[i].lOk = true;
+          cmd[i].pos = s[i].min + MARGIN;
+        }
       }
       else if (s[i].pos == cmd[i].pos) // moves left slowly
       {
         s[i].speed = 400;
         cmd[i].pos = -INFINITY;
       }
-      if (!s[i].rTouch)
+    }
+    if (!s[i].rTouch)
+    {
+      if (emergency & (1 << i)) // clears emergency ; moves out of the switch
       {
-        if (emergency & (1 << i)) // clears emergency ; moves out of the switch
+        if ((i < 2) && ((emergency & 0b11) == 0b11))
+        {
+          emergency &= ~0b11;
+          s[0].max = s[0].pos;
+          s[1].max = s[1].pos;
+          s[0].rTouch = true;
+          s[1].rTouch = true;
+          cmd[0].pos = s[1].pos - MARGIN;
+          cmd[1].pos = s[0].pos - MARGIN;
+        }
+        else if (i >= 2)
         {
           okEmergency(i);
           s[i].rTouch = true;
           cmd[i].pos = s[i].pos - MARGIN;
         }
-        else // moves to the right quickly
+      }
+      else // moves to the right quickly
+      {
+        s[i].speed = 40;
+        cmd[i].pos = INFINITY;
+      }
+    }
+    else if (!s[i].rOk)
+    {
+      if (emergency & (1 << i)) // clears emergency ; moves out of the switch
+      {
+        if ((i < 2) && ((emergency & 0b11) == 0b11))
         {
-          s[i].speed = 40;
-          cmd[i].pos = INFINITY;
+          emergency &= ~0b11;
+          s[0].max = s[0].pos;
+          s[1].max = s[1].pos;
+          s[0].rTouch = true;
+          s[1].rTouch = true;
+          cmd[0].pos = s[1].pos - MARGIN;
+          cmd[1].pos = s[0].pos - MARGIN;
+        }
+        else if (i >= 2)
+        {
+        s[i].max = s[i].pos;
+        okEmergency(i);
+        s[i].lOk = true;
+        cmd[i].pos = s[i].max - MARGIN;
         }
       }
-      else if (!s[i].rOk)
+      else if (s[i].pos == cmd[i].pos) // moves right slowly
       {
-        if (emergency & (1 << i)) // clears emergency ; moves out of the switch
-        {
-          s[i].max = s[i].pos;
-          okEmergency(i);
-          s[i].lOk = true;
-          cmd[i].pos = s[i].max - MARGIN;
-        }
-        else if (s[i].pos == cmd[i].pos) // moves right slowly
-        {
-          s[i].speed = 400;
-          cmd[i].pos = INFINITY;
-        }
+        s[i].speed = 400;
+        cmd[i].pos = INFINITY;
+      }
+    }
+    else
+    {
+      if (i >= 2)
+      {
+        long middle = (s[i].min + s[i].max) / 2;
+        long delta = s[i].max - s[i].min - 2 * MARGIN;
+        s[i].min = middle - delta;
+        s[i].max = middle + delta;
+        s[i].pos -= middle;
+        cmd[i].pos -= middle;
       }
       else
       {
-        if (i >= 2)
-        {
-          long middle = (s[i].min + s[i].max) / 2;
-          long delta = s[i].max - s[i].min - 2 * MARGIN;
-          s[i].min = middle - delta;
-          s[i].max = middle + delta;
-          s[i].pos -= middle;
-          cmd[i].pos -= middle;
-        }
+        ;
       }
     }
   }
