@@ -6,7 +6,7 @@ using namespace TeensyTimerTool;
 #include <SimpleFOC.h>
 
 #define DELTA_HIGH 3.0
-#define INFINITY 1000000
+#define OFFSCREEN 1000000
 #define MARGIN 150
 
 // I/O PINOUT
