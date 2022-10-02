@@ -626,6 +626,24 @@ void suivi()
   // Serial.println(String(cmd[1].pos) + "\t aim1 : " + String(s[1].aim) + "\t pos1 : " + String(s[1].pos) + "\t n1 : " + String(s[1].n));
 }
 
+void setupLimits()
+{
+    for(int i = 2; i < 7; i++)
+    {
+      long middle = (s[i].min + s[i].max) / 2;
+      long delta = s[i].max - s[i].min - 2 * MARGIN;
+      s[i].min = middle - delta;
+      s[i].max = middle + delta;
+      s[i].pos -= middle;
+      cmd[i].pos -= middle;
+    }
+    for (int i = 0; i < 2; i++)
+    {
+      long middle = (s[i].min + s[i].max) / 2;
+      long delta = s[i].max - s[i].min - 2 * MARGIN;
+    }
+}
+
 void tickTimer()
 {
   for (int i = 0; i < 7; i++)
@@ -726,10 +744,10 @@ void tickTimer()
         }
         else if (i >= 2)
         {
-        s[i].max = s[i].pos;
-        okEmergency(i);
-        s[i].lOk = true;
-        cmd[i].pos = s[i].max - MARGIN;
+          s[i].max = s[i].pos;
+          okEmergency(i);
+          s[i].lOk = true;
+          cmd[i].pos = s[i].max - MARGIN;
         }
       }
       else if (s[i].pos == cmd[i].pos) // moves right slowly
@@ -740,19 +758,7 @@ void tickTimer()
     }
     else
     {
-      if (i >= 2)
-      {
-        long middle = (s[i].min + s[i].max) / 2;
-        long delta = s[i].max - s[i].min - 2 * MARGIN;
-        s[i].min = middle - delta;
-        s[i].max = middle + delta;
-        s[i].pos -= middle;
-        cmd[i].pos -= middle;
-      }
-      else
-      {
-        ;
-      }
+      s[i].ok = true;
     }
   }
 }
