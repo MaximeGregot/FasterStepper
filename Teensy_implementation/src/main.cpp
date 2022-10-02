@@ -6,7 +6,7 @@ using namespace TeensyTimerTool;
 #include <SimpleFOC.h>
 
 #define DELTA_HIGH 3.0
-#define INFINITY 1000000
+#define OFFSCREEN 1000000
 #define MARGIN 150
 
 // I/O PINOUT
@@ -20,13 +20,13 @@ using namespace TeensyTimerTool;
 #define SDA 18
 #define SCL 19
 
-#define STEP_0 0
-#define STEP_1 6
-#define STEP_2 7
-#define STEP_3 9
-#define STEP_4 10
-#define STEP_5 11
-#define STEP_6 12
+#define STEP_0 0  // Player 1
+#define STEP_1 6  // Player 2
+#define STEP_2 7  // Player 3
+#define STEP_3 9  // Player 4
+#define STEP_4 10 // Ball Y axis
+#define STEP_5 11 // Ball X axis motor 1
+#define STEP_6 12 // Ball X axis motor 2
 #define DIR_0 24
 #define DIR_1 25
 #define DIR_2 26
@@ -167,8 +167,8 @@ void initStepper(int i)
 	s[i].delta = 0;
 	s[i].move = false;
 	s[i].brake = false;
-	s[i].min = -INFINITY;
-	s[i].max = INFINITY;
+	s[i].min = -OFFSCREEN;
+	s[i].max = OFFSCREEN;
 	s[i].minSwitch = false;
 	s[i].maxSwitch = false;
 	s[i].initStep = 1;
@@ -619,10 +619,36 @@ void tickTimer()
 	{
 		switch (s[i].initStep)
 		{
-		case 1:
+		case 1: // goes to the minSwitch
+			s[i].speed = 40;
 			if (s[i].minSwitch)
-				;
+			{
+				clearEmergency(i);
+				s[i].initStep++;
+			}
+			else
+			{
+				s[i].aim = -OFFSCREEN;
+			}
 			break;
+		case 2: // X-axis : wait for second motor
+			if (i <= 4)
+			{
+				s[i].initStep++;
+			}
+			else if (s[5].initStep >= 2 && s[6].initStep >= 2)
+			{
+				s[i].initStep++;
+			}
+		case 3:	// backs away from minSwitch
+			cmd[i].pos = s[i].pos + MARGIN;
+			s[i].initStep++;
+		case 4:	// if arrived, goes back towards minSwitch, but slowly
+			if(s[i].pos == cmd[i].pos) {
+				s[i].speed = 400;
+				cmd[i].pos = -OFFSCREEN;
+				s[i].initStep++;
+			}
 
 		default:
 			s[i].initStep = 1;
@@ -641,9 +667,6 @@ void tickTimer()
 //       {
 //         if ((i < 2) && ((emergency & 0b11) == 0b11))
 //         {
-//           emergency &= ~0b11;
-//           s[0].lTouch = true;
-//           s[1].lTouch = true;
 //           cmd[0].pos = s[0].pos + MARGIN;
 //           cmd[1].pos = s[1].pos + MARGIN;
 //         }
@@ -657,7 +680,7 @@ void tickTimer()
 //       else // moves to the left quickly
 //       {
 //         s[i].speed = 40;
-//         cmd[i].pos = -INFINITY;
+//         cmd[i].pos = -OFFSCREEN;
 //       }
 //     }
 //     else if (!s[i].lOk)
@@ -685,7 +708,7 @@ void tickTimer()
 //       else if (s[i].pos == cmd[i].pos) // moves left slowly
 //       {
 //         s[i].speed = 400;
-//         cmd[i].pos = -INFINITY;
+//         cmd[i].pos = -OFFSCREEN;
 //       }
 //     }
 //     if (!s[i].rTouch)
@@ -712,7 +735,7 @@ void tickTimer()
 //       else // moves to the right quickly
 //       {
 //         s[i].speed = 40;
-//         cmd[i].pos = INFINITY;
+//         cmd[i].pos = OFFSCREEN;
 //       }
 //     }
 //     else if (!s[i].rOk)
@@ -740,7 +763,7 @@ void tickTimer()
 //       else if (s[i].pos == cmd[i].pos) // moves right slowly
 //       {
 //         s[i].speed = 400;
-//         cmd[i].pos = INFINITY;
+//         cmd[i].pos = OFFSCREEN;
 //       }
 //     }
 //     else
@@ -774,12 +797,12 @@ void tickTimer()
 	  s[1].ok = true;
 	}
 
-	if ((s[i].minSwitch == true) && (s[i].min == -INFINITY))
+	if ((s[i].minSwitch == true) && (s[i].min == -OFFSCREEN))
 	{
 	  s[i].min = s[i].pos;
 	  cmd[i].pos = s[i].min;
 	}
-	else if ((s[i].maxSwitch == true) && (s[i].max == INFINITY))
+	else if ((s[i].maxSwitch == true) && (s[i].max == OFFSCREEN))
 	{
 	  s[i].max = s[i].pos;
 	  cmd[i].pos = s[i].max;
@@ -791,11 +814,11 @@ void tickTimer()
 	  {
 		if (!s[i].ok)
 		{
-		  cmd[i].pos = INFINITY;
+		  cmd[i].pos = OFFSCREEN;
 		  if (i < 2)
 		  {
-			cmd[0].pos = INFINITY;
-			cmd[1].pos = INFINITY;
+			cmd[0].pos = OFFSCREEN;
+			cmd[1].pos = OFFSCREEN;
 		  }
 		}
 		else
