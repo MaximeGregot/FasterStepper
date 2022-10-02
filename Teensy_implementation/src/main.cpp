@@ -606,29 +606,22 @@ void osTimer()
 	ostimer.trigger(setTimer());
 }
 
-void suivi()
-{
-	Serial.println(String(cmd[0].pos) + "\t aim0 : " + String(s[0].aim) + "\t pos0 : " + String(s[0].pos) + "\t n0 : " + String(s[0].n) + "\t compteur : " + String(compteur));
-
-	// Serial.println(String(cmd[1].pos) + "\t aim1 : " + String(s[1].aim) + "\t pos1 : " + String(s[1].pos) + "\t n1 : " + String(s[1].n));
-}
-
 void setupLimits()
 {
-    for(int i = 2; i < 7; i++)
-    {
-      long middle = (s[i].min + s[i].max) / 2;
-      long delta = s[i].max - s[i].min - 2 * MARGIN;
-      s[i].min = middle - delta;
-      s[i].max = middle + delta;
-      s[i].pos -= middle;
-      cmd[i].pos -= middle;
-    }
-    for (int i = 0; i < 2; i++)
-    {
-      long middle = (s[i].min + s[i].max) / 2;
-      long delta = s[i].max - s[i].min - 2 * MARGIN;
-    }
+	for (int i = 2; i < 7; i++)
+	{
+		long middle = (s[i].min + s[i].max) / 2;
+		long delta = s[i].max - s[i].min - 2 * MARGIN;
+		s[i].min = middle - delta;
+		s[i].max = middle + delta;
+		s[i].pos -= middle;
+		cmd[i].pos -= middle;
+	}
+	for (int i = 0; i < 2; i++)
+	{
+		long middle = (s[i].min + s[i].max) / 2;
+		long delta = s[i].max - s[i].min - 2 * MARGIN;
+	}
 }
 
 void tickTimer()
@@ -658,11 +651,12 @@ void tickTimer()
 			{
 				s[i].initStep++;
 			}
-		case 3:	// backs away from minSwitch
+		case 3: // backs away from minSwitch
 			cmd[i].pos = s[i].pos + MARGIN;
 			s[i].initStep++;
-		case 4:	// if arrived, goes back towards minSwitch, but slowly
-			if(s[i].pos == cmd[i].pos) {
+		case 4: // if arrived, goes back towards minSwitch, but slowly
+			if (s[i].pos == cmd[i].pos)
+			{
 				s[i].speed = 400;
 				cmd[i].pos = -OFFSCREEN;
 				s[i].initStep++;
@@ -903,40 +897,61 @@ void initialize()
 	}
 }
 
+void suivi()
+{
+	Serial.println(String(cmd[0].pos) + "\t aim0 : " + String(s[0].aim) + "\t pos0 : " + String(s[0].pos) + "\t n0 : " + String(s[0].n) + "\t compteur : " + String(compteur));
+	// Serial.println(String(cmd[1].pos) + "\t aim1 : " + String(s[1].aim) + "\t pos1 : " + String(s[1].pos) + "\t n1 : " + String(s[1].n));
+}
+
 void setup()
 {
 	delay(2000);
 	declarePinout();
 	interruptsInit();
-	Serial.begin(9600);
+	// Serial.begin(9600);
 	// initialize();
 	initStepper(0);
 	initCommand(0);
+
+	// TEST 7 STEPPERS
+	for (int i = 0; i < 7; i++)
+	{
+		initStepper(i);
+		initCommand(i);
+	}
+
 	ptimer.begin(pTimer, 20.0);
 	delay(2000);
 	ostimer.begin(osTimer);
 	ostimer.trigger(300.0);
-	serial.begin(suivi, 100000);
+	// serial.begin(suivi, 400000);
 }
 
 void loop()
 {
-	/*
-	  s[0].speed = random(30, 500);
-	  cmd[0].pos = 0;
-	  delay(1000);
-	  cmd[0].pos = random(8000, 32000);
-	  delay(2000);
-	*/
 
-	for (variable = 0; variable < (signed)(sizeof(notes) / sizeof(notes[0])); variable++)
+	// TEST 7 STEPPERS
+	for (int i = 0; i < 7; i++)
 	{
-		s[0].speed = notes[variable];
-		compteur = 0;
-		cmd[0].pos = 0;
-		delay(2000);
-		compteur = 0;
-		cmd[0].pos = 1600;
-		delay(2000);
+		s[i].speed = random(60, 500);
+		cmd[i].pos = 0;
 	}
+	delay(1000);
+
+	for (int i = 0; i < 7; i++)
+	{
+		cmd[i].pos = random(8000, 32000);
+	}
+	delay(2000);
+
+	// for (variable = 0; variable < (signed)(sizeof(notes) / sizeof(notes[0])); variable++)
+	// {
+	// 	s[0].speed = notes[variable];
+	// 	compteur = 0;
+	// 	cmd[0].pos = 0;
+	// 	delay(2000);
+	// 	compteur = 0;
+	// 	cmd[0].pos = 1600;
+	// 	delay(2000);
+	// }
 }
