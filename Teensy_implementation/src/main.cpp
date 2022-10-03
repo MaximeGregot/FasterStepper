@@ -632,36 +632,123 @@ void tickTimer()
 		{
 		case 1: // goes to the minSwitch
 			s[i].speed = 40;
+			cmd[i].pos = -OFFSCREEN;
+			s[i].initStep++;
+			break;
+
+		case 2: // waits for minSwitch to be triggered
 			if (s[i].minSwitch)
 			{
 				clearEmergency(i);
 				s[i].initStep++;
 			}
-			else
-			{
-				s[i].aim = -OFFSCREEN;
-			}
 			break;
-		case 2: // X-axis : wait for second motor
+			
+		case 3: // X-axis : wait for second motor
 			if (i <= 4)
 			{
 				s[i].initStep++;
 			}
-			else if (s[5].initStep >= 2 && s[6].initStep >= 2)
+			else if (s[5].initStep >= 3 && s[6].initStep >= 3)
 			{
 				s[i].initStep++;
 			}
-		case 3: // backs away from minSwitch
+			break;
+
+		case 4: // backs away from minSwitch
 			cmd[i].pos = s[i].pos + MARGIN;
 			s[i].initStep++;
-		case 4: // if arrived, goes back towards minSwitch, but slowly
+			break;
+
+		case 5: // if arrived, goes back towards minSwitch, but slowly
 			if (s[i].pos == cmd[i].pos)
 			{
 				s[i].speed = 400;
 				cmd[i].pos = -OFFSCREEN;
 				s[i].initStep++;
 			}
+			break;
 
+		case 6:
+			if (s[i].minSwitch)
+			{
+				clearEmergency(i);
+				s[i].initStep++;
+			}
+			break;
+
+		case 7: // X-axis : wait for second motor
+			if (i <= 4)
+			{
+				s[i].min = s[i].pos;
+				s[i].initStep++;
+			}
+			else if (s[5].initStep >= 7 && s[6].initStep >= 7)
+			{
+				s[i].min = s[i].pos;
+				s[i].initStep++;
+			}
+			break;
+	// FIN DE LA VERIF
+		case 8:
+				s[i].speed = 40;
+				s[i].aim = OFFSCREEN;
+				s[i].initStep++;
+		break;
+
+		case 9: // goes to the maxSwitch
+			if (s[i].maxSwitch)
+			{
+				clearEmergency(i);
+				s[i].initStep++;
+			}
+			break;
+
+		case 7: // X-axis : wait for second motor
+			if (i <= 4)
+			{
+				s[i].initStep++;
+			}
+			else if (s[5].initStep >= 7 && s[6].initStep >= 7)
+			{
+				s[i].initStep++;
+			}
+			break;
+		case 8: // backs away from maxSwitch
+			cmd[i].pos = s[i].pos - MARGIN;
+			s[i].initStep++;
+			break;
+		case 9: // if arrived, goes back towards maxSwitch, but slowly
+			if (s[i].pos == cmd[i].pos)
+			{
+				s[i].speed = 400;
+				cmd[i].pos = OFFSCREEN;
+				s[i].initStep++;
+			}
+			break;
+		case 10: // X-axis : wait for second motor
+			if (i <= 4)
+			{
+				s[i].initStep++;
+				s[i].min = s[i].pos;
+			}
+			else if (s[5].initStep >= 10 && s[6].initStep >= 10)
+			{
+				s[i].initStep++;
+				s[i].max = s[i].pos;
+			}
+			break;
+		case 11: // end of the setup process
+			if (i <= 4)
+			{
+				cmd[i].pos = s[i].pos;
+			}
+			else if (s[5].initStep == 11 && s[6].initStep == 11)
+			{
+				;
+			}
+		case 0: // the setup id done
+			break;
 		default:
 			s[i].initStep = 1;
 			break;
